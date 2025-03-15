@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres:16.8-alpine3.20
-    container_name: nexogestor-database
+    container_name: swap-ai-database
     restart: always
     shm_size: 1024mb
     environment:
@@ -9,22 +9,22 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     networks:
-      nexogestor_network:
+      swap-ai-network:
         ipv4_address: 192.168.10.2
-  nexogestor_server:
+  swap-ai-server:
     build: .
-    container_name: nexogestor-server-01
+    container_name: swap-ai-server-01
     restart: always
     env_file:
       - .env
     depends_on:
       - db
     networks:
-      nexogestor_network:
+      swap-ai-network:
         ipv4_address: 192.168.10.3
 
 networks:
-  nexogestor_network:
+  swap-ai-network:
     driver: bridge
     ipam:
       config:
