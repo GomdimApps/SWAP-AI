@@ -1,182 +1,183 @@
-# Testing the SWAP-AI API
+# Testando a API SWAP-AI
 
-This document provides instructions for testing the SWAP-AI API using curl and Postman.
+Este documento fornece instruções para testar a API SWAP-AI usando curl e Postman.
 
-## Prerequisites
+## Pré-requisitos
 
-1. The API server is running locally on port 8080
-2. PostgreSQL database is set up with the required schemas
+1. O servidor da API está rodando localmente na porta 8080
+2. O banco de dados PostgreSQL está configurado com os esquemas necessários
 
-## Testing with curl
+## Testando com curl
 
-### Health Check
+### Verificação de Saúde
 
 ```bash
-curl -X GET http://localhost:8080/health
+curl -X GET http://192.168.10.3:8080/health
 ```
 
-Expected response:
+Resposta esperada:
 ```json
 {"status":"ok"}
 ```
 
-### User Registration
+### Registro de Usuário
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"password123"}'
+curl -X POST http://192.168.10.3:8080/api/v1/auth/register \
+    -H "Content-Type: application/json" \
+    -d '{"email":"test@example.com","password":"password123"}'
 ```
 
-Expected response:
+Resposta esperada:
 ```json
 {
-  "token": "sample-jwt-token-<uuid>",
-  "userId": "<uuid>",
-  "email": "test@example.com",
-  "expiresAt": 1678909876
+    "token": "sample-jwt-token-<uuid>",
+    "userId": "<uuid>",
+    "email": "test@example.com",
+    "expiresAt": 1678909876
 }
 ```
 
-### User Login
+### Login de Usuário
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"password123"}'
+curl -X POST http://192.168.10.3:8080/api/v1/auth/login \
+    -H "Content-Type: application/json" \
+    -d '{"email":"test@example.com","password":"password123"}'
 ```
 
-Expected response:
+Resposta esperada:
 ```json
 {
-  "token": "sample-jwt-token-<uuid>",
-  "userId": "<uuid>",
-  "email": "test@example.com",
-  "expiresAt": 1678909876
+    "token": "sample-jwt-token-<uuid>",
+    "userId": "<uuid>",
+    "email": "test@example.com",
+    "expiresAt": 1678909876
 }
 ```
 
-### Create Client
+### Criar Cliente
 
-Save the userId from the registration/login response and use it here:
+Salve o userId da resposta de registro/login e use aqui:
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/clients?userId=<user_id_here> \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer sample-jwt-token" \
-  -d '{"name":"Test Client","email":"client@example.com","whatsapp":"+551199999999"}'
+curl -X POST http://192.168.10.3:8080/api/v1/clients?userId=<user_id_here> \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer sample-jwt-token" \
+    -d '{"name":"Test Client","email":"client@example.com","whatsapp":"+551199999999"}'
 ```
 
-Expected response:
+Resposta esperada:
 ```json
 {
-  "ID": "<client_uuid>",
-  "FolderID": "<folder_uuid>",
-  "Name": "Test Client",
-  "Status": "ativo",
-  "Email": "client@example.com",
-  "WhatsApp": "+551199999999",
-  "CreatedAt": "2023-01-01T12:00:00Z",
-  "UpdatedAt": "2023-01-01T12:00:00Z"
+    "ID": "<client_uuid>",
+    "FolderID": "<folder_uuid>",
+    "Name": "Test Client",
+    "Status": "ativo",
+    "Email": "client@example.com",
+    "WhatsApp": "+551199999999",
+    "CreatedAt": "2023-01-01T12:00:00Z",
+    "UpdatedAt": "2023-01-01T12:00:00Z"
 }
 ```
 
-### Get Clients
+### Obter Clientes
 
 ```bash
-curl -X GET http://localhost:8080/api/v1/clients?userId=<user_id_here> \
-  -H "Authorization: Bearer sample-jwt-token"
+curl -X GET http://192.168.10.3:8080/api/v1/clients?userId=<user_id_here> \
+    -H "Authorization: Bearer sample-jwt-token"
 ```
 
-Expected response:
+Resposta esperada:
 ```json
 {
-  "clients": [
-    {
-      "ID": "<client_uuid>",
-      "FolderID": "<folder_uuid>",
-      "Name": "Test Client",
-      "Status": "ativo",
-      "Email": "client@example.com",
-      "WhatsApp": "+551199999999",
-      "CreatedAt": "2023-01-01T12:00:00Z",
-      "UpdatedAt": "2023-01-01T12:00:00Z"
-    }
-  ]
+    "clients": [
+        {
+            "ID": "<client_uuid>",
+            "FolderID": "<folder_uuid>",
+            "Name": "Test Client",
+            "Status": "ativo",
+            "Email": "client@example.com",
+            "WhatsApp": "+551199999999",
+            "CreatedAt": "2023-01-01T12:00:00Z",
+            "UpdatedAt": "2023-01-01T12:00:00Z"
+        }
+    ]
 }
 ```
 
-### Get Client by ID
+### Obter Cliente por ID
 
 ```bash
-curl -X GET http://localhost:8080/api/v1/clients/<client_uuid> \
-  -H "Authorization: Bearer sample-jwt-token"
+curl -X GET http://192.168.10.3:8080/api/v1/clients/<client_uuid> \
+    -H "Authorization: Bearer sample-jwt-token"
 ```
 
-Expected response:
+Resposta esperada:
 ```json
 {
-  "ID": "<client_uuid>",
-  "FolderID": "<folder_uuid>",
-  "Name": "Test Client",
-  "Status": "ativo",
-  "Email": "client@example.com",
-  "WhatsApp": "+551199999999",
-  "CreatedAt": "2023-01-01T12:00:00Z",
-  "UpdatedAt": "2023-01-01T12:00:00Z"
+    "ID": "<client_uuid>",
+    "FolderID": "<folder_uuid>",
+    "Name": "Test Client",
+    "Status": "ativo",
+    "Email": "client@example.com",
+    "WhatsApp": "+551199999999",
+    "CreatedAt": "2023-01-01T12:00:00Z",
+    "UpdatedAt": "2023-01-01T12:00:00Z"
 }
 ```
 
-### Update Client
+### Atualizar Cliente
 
 ```bash
-curl -X PUT http://localhost:8080/api/v1/clients/<client_uuid> \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer sample-jwt-token" \
-  -d '{"name":"Updated Client","email":"updated@example.com","whatsapp":"+551188888888"}'
+curl -X PUT http://192.168.10.3:8080/api/v1/clients/<client_uuid> \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer sample-jwt-token" \
+    -d '{"name":"Updated Client","email":"updated@example.com","whatsapp":"+551188888888"}'
 ```
 
-Expected response:
+Resposta esperada:
 ```json
 {
-  "ID": "<client_uuid>",
-  "FolderID": "<folder_uuid>",
-  "Name": "Updated Client",
-  "Status": "ativo",
-  "Email": "updated@example.com",
-  "WhatsApp": "+551188888888",
-  "CreatedAt": "2023-01-01T12:00:00Z",
-  "UpdatedAt": "2023-01-01T12:30:00Z"
+    "ID": "<client_uuid>",
+    "FolderID": "<folder_uuid>",
+    "Name": "Updated Client",
+    "Status": "ativo",
+    "Email": "updated@example.com",
+    "WhatsApp": "+551188888888",
+    "CreatedAt": "2023-01-01T12:00:00Z",
+    "UpdatedAt": "2023-01-01T12:30:00Z"
 }
 ```
 
-### Delete Client
+### Deletar Cliente
 
 ```bash
-curl -X DELETE http://localhost:8080/api/v1/clients/<client_uuid> \
-  -H "Authorization: Bearer sample-jwt-token"
+curl -X DELETE http://192.168.10.3:8080/api/v1/clients/<client_uuid> \
+    -H "Authorization: Bearer sample-jwt-token"
 ```
 
-Expected response:
+Resposta esperada:
 ```json
 {
-  "message": "Client deleted successfully"
+    "message": "Client deleted successfully"
 }
 ```
 
-## Testing with Postman
+## Testando com Postman
 
-1. Import the Postman collection from the file `testing/swap_ai_api.postman_collection.json`
-2. Set up environment variables:
-   - `base_url` = `http://localhost:8080`
-   - `user_id` (will be populated after registration/login)
-   - `auth_token` (will be populated after registration/login)
+1. Importe a coleção do Postman do arquivo `testing/swap_ai_api.postman_collection.json`
+2. Configure as variáveis de ambiente:
+     - `base_url` = `http://192.168.10.3:8080`
+     - `user_id` (será preenchido após registro/login)
+     - `auth_token` (será preenchido após registro/login)
 
-3. Execute the requests in the following order:
-   - Health Check
-   - Register User (or Login if already registered)
-   - Create Client
-   - Get All Clients
-   - Get Client by ID
-   - Update Client
-   - Delete Client
+3. Execute as requisições na seguinte ordem:
+     - Verificação de Saúde
+     - Registrar Usuário (ou Login se já registrado)
+     - Criar Cliente
+     - Obter Todos os Clientes
+     - Obter Cliente por ID
+     - Atualizar Cliente
+     - Deletar Cliente
+
