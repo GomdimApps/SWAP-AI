@@ -1,6 +1,6 @@
-# Testando a API SWAP-AI
+# API SWAP-AI
 
-Este documento fornece instruções para testar a API SWAP-AI usando curl e Postman.
+Este documento fornece instruções para testar a API SWAP-AI usando curl
 
 ## Pré-requisitos
 
@@ -25,15 +25,15 @@ Resposta esperada:
 ```bash
 curl -X POST http://192.168.10.3:8080/api/v1/auth/register \
     -H "Content-Type: application/json" \
-    -d '{"email":"test@example.com","password":"password123"}'
+    -d '{"email":"new_user@example.com","password":"password123"}'
 ```
 
 Resposta esperada:
 ```json
 {
-    "token": "sample-jwt-token-<uuid>",
+    "token": "Bearer <uuid>",
     "userId": "<uuid>",
-    "email": "test@example.com",
+    "email": "new_user@example.com",
     "expiresAt": 1678909876
 }
 ```
@@ -43,27 +43,25 @@ Resposta esperada:
 ```bash
 curl -X POST http://192.168.10.3:8080/api/v1/auth/login \
     -H "Content-Type: application/json" \
-    -d '{"email":"test@example.com","password":"password123"}'
+    -d '{"email":"new_user@example.com","password":"password123"}'
 ```
 
 Resposta esperada:
 ```json
 {
-    "token": "sample-jwt-token-<uuid>",
+    "token": "Bearer <uuid>",
     "userId": "<uuid>",
-    "email": "test@example.com",
+    "email": "new_user@example.com",
     "expiresAt": 1678909876
 }
 ```
 
 ### Criar Cliente
 
-Salve o userId da resposta de registro/login e use aqui:
-
 ```bash
-curl -X POST http://192.168.10.3:8080/api/v1/clients?userId=<user_id_here> \
+curl -X POST http://192.168.10.3:8080/api/v1/clients \
     -H "Content-Type: application/json" \
-    -H "Authorization: Bearer sample-jwt-token" \
+    -H "Authorization: Bearer <token_uuid>" \
     -d '{"name":"Test Client","email":"client@example.com","whatsapp":"+551199999999"}'
 ```
 
@@ -84,8 +82,8 @@ Resposta esperada:
 ### Obter Clientes
 
 ```bash
-curl -X GET http://192.168.10.3:8080/api/v1/clients?userId=<user_id_here> \
-    -H "Authorization: Bearer sample-jwt-token"
+curl -X GET http://192.168.10.3:8080/api/v1/clients \
+    -H "Authorization: Bearer <token_uuid>"
 ```
 
 Resposta esperada:
@@ -110,7 +108,7 @@ Resposta esperada:
 
 ```bash
 curl -X GET http://192.168.10.3:8080/api/v1/clients/<client_uuid> \
-    -H "Authorization: Bearer sample-jwt-token"
+    -H "Authorization: Bearer <token_uuid>"
 ```
 
 Resposta esperada:
@@ -132,7 +130,7 @@ Resposta esperada:
 ```bash
 curl -X PUT http://192.168.10.3:8080/api/v1/clients/<client_uuid> \
     -H "Content-Type: application/json" \
-    -H "Authorization: Bearer sample-jwt-token" \
+    -H "Authorization: Bearer <token_uuid>" \
     -d '{"name":"Updated Client","email":"updated@example.com","whatsapp":"+551188888888"}'
 ```
 
@@ -154,7 +152,7 @@ Resposta esperada:
 
 ```bash
 curl -X DELETE http://192.168.10.3:8080/api/v1/clients/<client_uuid> \
-    -H "Authorization: Bearer sample-jwt-token"
+    -H "Authorization: Bearer <token_uuid>"
 ```
 
 Resposta esperada:
@@ -163,21 +161,3 @@ Resposta esperada:
     "message": "Client deleted successfully"
 }
 ```
-
-## Testando com Postman
-
-1. Importe a coleção do Postman do arquivo `testing/swap_ai_api.postman_collection.json`
-2. Configure as variáveis de ambiente:
-     - `base_url` = `http://192.168.10.3:8080`
-     - `user_id` (será preenchido após registro/login)
-     - `auth_token` (será preenchido após registro/login)
-
-3. Execute as requisições na seguinte ordem:
-     - Verificação de Saúde
-     - Registrar Usuário (ou Login se já registrado)
-     - Criar Cliente
-     - Obter Todos os Clientes
-     - Obter Cliente por ID
-     - Atualizar Cliente
-     - Deletar Cliente
-

@@ -31,25 +31,27 @@ CREATE TABLE system.users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE system.folders (
+-- Moved from system to files schema
+CREATE TABLE files.folders (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID UNIQUE NOT NULL REFERENCES system.users(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE clients.clients_swap (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    folder_id UUID NOT NULL REFERENCES system.folders(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES system.users(id) ON DELETE CASCADE,
+    folder_id UUID NOT NULL REFERENCES files.folders(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     status VARCHAR(10) CHECK (status IN ('ativo', 'inativo')) DEFAULT 'ativo',
     email VARCHAR(255),
-    whatsapp VARCHAR(20),
+    whatsapp VARCHAR(20),  -- This field name must match the model field name
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Add indices
 CREATE INDEX idx_clients_folder_id ON clients.clients_swap(folder_id);
+CREATE INDEX idx_clients_user_id ON clients.clients_swap(user_id);
 CREATE INDEX idx_clients_status ON clients.clients_swap(status);
 
 -- Create trigger for updating updated_at timestamp

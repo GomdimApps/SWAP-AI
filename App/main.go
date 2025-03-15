@@ -1,9 +1,12 @@
 package main
 
 import (
+	"github.com/GomdimApps/lcme"
 	"github.com/NightGhost404/SWAP_AI/App/server"
 )
 
 func main() {
-	server.StartServer()
+	lcme.ScaleFork(func() {
+		server.StartServer()
+	})
 }
