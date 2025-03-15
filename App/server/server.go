@@ -6,7 +6,6 @@ import (
 
 	"github.com/NightGhost404/SWAP_AI/App/controllers"
 	"github.com/NightGhost404/SWAP_AI/App/database"
-	"github.com/NightGhost404/SWAP_AI/App/models"
 	"github.com/gin-gonic/gin"
 )
 
@@ -67,11 +66,6 @@ func StartServer() {
 	// Connect to database
 	if err := database.Connect(); err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
-	}
-
-	// Auto migrate schemas
-	if err := database.DB.AutoMigrate(&models.User{}, &models.Folder{}, &models.Client{}); err != nil {
-		log.Fatalf("Failed to migrate database schemas: %v", err)
 	}
 
 	// Setup router

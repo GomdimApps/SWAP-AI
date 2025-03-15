@@ -1,4 +1,4 @@
-GRANT ALL PRIVILEGES ON DATABASE nexogestor TO nexogestor_infra;
+GRANT ALL PRIVILEGES ON DATABASE swap_database TO swap_user;
 -- Criar os schemas
 CREATE SCHEMA clients;
 DROP SCHEMA public CASCADE;
@@ -6,10 +6,10 @@ CREATE SCHEMA products;
 CREATE SCHEMA system;
 CREATE SCHEMA files;
 CREATE SCHEMA transactions;
-GRANT USAGE ON SCHEMA products, clients, system, files, transactions TO nexogestor_infra;
+GRANT USAGE ON SCHEMA products, clients, system, files, transactions TO swap_user;
 
-ALTER DATABASE nexogestor SET default_transaction_isolation = 'READ COMMITTED';
-ALTER DATABASE nexogestor SET log_statement = 'all';
+ALTER DATABASE swap_database SET default_transaction_isolation = 'READ COMMITTED';
+ALTER DATABASE swap_database SET log_statement = 'all';
 
 CREATE TABLE clients.clients (  
   id UUID PRIMARY KEY,  
