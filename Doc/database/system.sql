@@ -43,7 +43,7 @@ CREATE TABLE clients.clients_swap (
     name VARCHAR(100) NOT NULL,
     status VARCHAR(10) CHECK (status IN ('ativo', 'inativo')) DEFAULT 'ativo',
     email VARCHAR(255),
-    whatsapp VARCHAR(20),
+    whatsapp VARCHAR(20),  -- This field name must match the model field name
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

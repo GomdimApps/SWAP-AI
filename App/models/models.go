@@ -41,7 +41,7 @@ type Client struct {
 	Name      string    `gorm:"not null"`
 	Status    string    `gorm:"type:varchar(10);check:status IN ('ativo', 'inativo')"`
 	Email     string
-	WhatsApp  string
+	WhatsApp  string `gorm:"column:whatsapp"` // Match column name in database
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

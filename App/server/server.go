@@ -56,7 +56,7 @@ func SetupRouter() *gin.Engine {
 			clients.POST("", controllers.CreateClient)
 			clients.GET("/:id", controllers.GetClientByID)
 			clients.PUT("/:id", controllers.UpdateClient)
-			clients.DELETE("/:id", controllers.DeleteClient)
+			clients.DELETE("/:id", controllers.DeleteClient) // This route already exists
 		}
 	}
 
