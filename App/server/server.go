@@ -3,10 +3,12 @@ package server
 import (
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/NightGhost404/SWAP_AI/App/controllers"
 	"github.com/NightGhost404/SWAP_AI/App/database"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // SetupRouter configures the Gin router with all routes
@@ -82,7 +84,6 @@ func StartServer() {
 // Middleware for authentication
 func authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// For testing purposes, we'll skip actual JWT validation
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is required"})
@@ -90,8 +91,27 @@ func authMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// In a real application, validate the JWT token here
-		// For testing, we'll just let the request through
+		// Extract the token
+		tokenParts := strings.Split(authHeader, " ")
+		if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization format"})
+			c.Abort()
+			return
+		}
+
+		token := tokenParts[1]
+
+		// For testing purposes, we'll treat the token as the user ID directly
+		// In a real app, this would involve proper JWT validation
+		userID, err := uuid.Parse(token)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+			c.Abort()
+			return
+		}
+
+		// Set the user ID in the context
+		c.Set("userID", userID)
 		c.Next()
 	}
 }

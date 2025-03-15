@@ -57,27 +57,13 @@ func RegisterUser(c *gin.Context) {
 		PasswordHash: string(hashedPassword),
 	}
 
-	tx := database.DB.Begin()
-	if err := tx.Create(&user).Error; err != nil {
-		tx.Rollback()
+	if err := database.DB.Create(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
 		return
 	}
 
-	// Create user's folder
-	folder := models.Folder{
-		UserID: user.ID,
-	}
-	if err := tx.Create(&folder).Error; err != nil {
-		tx.Rollback()
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user folder"})
-		return
-	}
-
-	tx.Commit()
-
 	// Generate token
-	token := "sample-jwt-token-" + user.ID.String() // Replace with actual JWT token generation
+	token := user.ID.String() // Just return the UUID as the token
 
 	c.JSON(http.StatusCreated, AuthResponse{
 		Token:     token,
@@ -111,7 +97,7 @@ func LoginUser(c *gin.Context) {
 	}
 
 	// Generate token
-	token := "sample-jwt-token-" + user.ID.String() // Replace with actual JWT token generation
+	token := user.ID.String() // Just return the UUID as the token
 
 	c.JSON(http.StatusOK, AuthResponse{
 		Token:     token,

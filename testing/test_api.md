@@ -31,7 +31,7 @@ curl -X POST http://192.168.10.3:8080/api/v1/auth/register \
 Resposta esperada:
 ```json
 {
-    "token": "sample-jwt-token-<uuid>",
+    "token": "Bearer sample-jwt-token-<uuid>",
     "userId": "<uuid>",
     "email": "test@example.com",
     "expiresAt": 1678909876
@@ -49,7 +49,7 @@ curl -X POST http://192.168.10.3:8080/api/v1/auth/login \
 Resposta esperada:
 ```json
 {
-    "token": "sample-jwt-token-<uuid>",
+    "token": "Bearer sample-jwt-token-<uuid>",
     "userId": "<uuid>",
     "email": "test@example.com",
     "expiresAt": 1678909876
@@ -58,10 +58,8 @@ Resposta esperada:
 
 ### Criar Cliente
 
-Salve o userId da resposta de registro/login e use aqui:
-
 ```bash
-curl -X POST http://192.168.10.3:8080/api/v1/clients?userId=<user_id_here> \
+curl -X POST http://192.168.10.3:8080/api/v1/clients \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer sample-jwt-token" \
     -d '{"name":"Test Client","email":"client@example.com","whatsapp":"+551199999999"}'

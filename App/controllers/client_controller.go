@@ -16,26 +16,30 @@ type ClientRequest struct {
 	Status   string `json:"status"`
 }
 
-// GetClients returns all clients for a user
+// GetUserID extracts user ID from context (set by auth middleware)
+func GetUserID(c *gin.Context) (uuid.UUID, bool) {
+	// In a real app, this would be extracted from the JWT token
+	// For testing, we simulate this by using a context value set by authMiddleware
+	userIDValue, exists := c.Get("userID")
+	if !exists {
+		return uuid.Nil, false
+	}
+
+	userID, ok := userIDValue.(uuid.UUID)
+	return userID, ok
+}
+
+// GetClients returns all clients for the authenticated user
 func GetClients(c *gin.Context) {
-	// In a real application, get user ID from JWT token
-	// For testing, we'll use a parameter
-	userID, err := uuid.Parse(c.Query("userId"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+	userID, ok := GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found"})
 		return
 	}
 
-	// Find user's folder
-	var folder models.Folder
-	if err := database.DB.Where("user_id = ?", userID).First(&folder).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User folder not found"})
-		return
-	}
-
-	// Get all clients for this folder
+	// Get all clients for this user
 	var clients []models.Client
-	if err := database.DB.Where("folder_id = ?", folder.ID).Find(&clients).Error; err != nil {
+	if err := database.DB.Where("user_id = ?", userID).Find(&clients).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch clients"})
 		return
 	}
@@ -51,23 +55,25 @@ func CreateClient(c *gin.Context) {
 		return
 	}
 
-	// In a real application, get user ID from JWT token
-	// For testing, we'll use a parameter
-	userID, err := uuid.Parse(c.Query("userId"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+	userID, ok := GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found"})
 		return
 	}
 
-	// Find user's folder
-	var folder models.Folder
-	if err := database.DB.Where("user_id = ?", userID).First(&folder).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User folder not found"})
+	tx := database.DB.Begin()
+
+	// Create a new folder for the client
+	folder := models.Folder{}
+	if err := tx.Create(&folder).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create folder"})
 		return
 	}
 
 	// Create client
 	client := models.Client{
+		UserID:   userID,
 		FolderID: folder.ID,
 		Name:     req.Name,
 		Email:    req.Email,
@@ -75,11 +81,13 @@ func CreateClient(c *gin.Context) {
 		Status:   req.Status,
 	}
 
-	if err := database.DB.Create(&client).Error; err != nil {
+	if err := tx.Create(&client).Error; err != nil {
+		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create client"})
 		return
 	}
 
+	tx.Commit()
 	c.JSON(http.StatusCreated, client)
 }
 
@@ -91,8 +99,14 @@ func GetClientByID(c *gin.Context) {
 		return
 	}
 
+	userID, ok := GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found"})
+		return
+	}
+
 	var client models.Client
-	if err := database.DB.First(&client, id).Error; err != nil {
+	if err := database.DB.Where("id = ? AND user_id = ?", id, userID).First(&client).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
 		return
 	}
@@ -114,8 +128,14 @@ func UpdateClient(c *gin.Context) {
 		return
 	}
 
+	userID, ok := GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found"})
+		return
+	}
+
 	var client models.Client
-	if err := database.DB.First(&client, id).Error; err != nil {
+	if err := database.DB.Where("id = ? AND user_id = ?", id, userID).First(&client).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
 		return
 	}
@@ -144,16 +164,37 @@ func DeleteClient(c *gin.Context) {
 		return
 	}
 
+	userID, ok := GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found"})
+		return
+	}
+
 	var client models.Client
-	if err := database.DB.First(&client, id).Error; err != nil {
+	if err := database.DB.Where("id = ? AND user_id = ?", id, userID).First(&client).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
 		return
 	}
 
-	if err := database.DB.Delete(&client).Error; err != nil {
+	// Get folder ID before deleting the client
+	folderID := client.FolderID
+
+	tx := database.DB.Begin()
+
+	// Delete client
+	if err := tx.Delete(&client).Error; err != nil {
+		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete client"})
 		return
 	}
 
+	// Delete associated folder
+	if err := tx.Delete(&models.Folder{}, folderID).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete folder"})
+		return
+	}
+
+	tx.Commit()
 	c.JSON(http.StatusOK, gin.H{"message": "Client deleted successfully"})
 }
