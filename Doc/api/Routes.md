@@ -1,6 +1,6 @@
-# Testando a API SWAP-AI
+# API SWAP-AI
 
-Este documento fornece instruções para testar a API SWAP-AI usando curl e Postman.
+Este documento fornece instruções para testar a API SWAP-AI usando curl
 
 ## Pré-requisitos
 
@@ -161,24 +161,3 @@ Resposta esperada:
     "message": "Client deleted successfully"
 }
 ```
-
-## Testando com Postman
-
-1. Importe a coleção do Postman do arquivo `testing/swap_ai_api.postman_collection.json`
-2. Configure as variáveis de ambiente:
-     - `base_url` = `http://192.168.10.3:8080`
-     - `auth_token` (será preenchido após registro/login - guarde apenas o UUID, sem o prefixo "Bearer")
-
-3. Execute as requisições na seguinte ordem:
-     - Verificação de Saúde
-     - Registrar Usuário (ou Login se já registrado)
-     - Criar Cliente
-     - Obter Todos os Clientes
-     - Obter Cliente por ID
-     - Atualizar Cliente
-     - Deletar Cliente
-
-## Solução de Problemas
-
-Se você receber um erro 409 ao registrar um usuário, isso indica que o email já está em uso. Tente fazer login com esse email ou use um email diferente para registrar um novo usuário.
-
