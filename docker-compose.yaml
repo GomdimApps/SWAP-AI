@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:16.8-alpine3.20
+    container_name: nexogestor-database
+    restart: always
+    shm_size: 1024mb
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    networks:
+      nexogestor_network:
+        ipv4_address: 192.168.10.2
+  nexogestor_server:
+    build: .
+    container_name: nexogestor-server-01
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      - db
+    networks:
+      nexogestor_network:
+        ipv4_address: 192.168.10.3
+
+networks:
+  nexogestor_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.10.0/29
