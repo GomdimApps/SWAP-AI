@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/NightGhost404/SWAP_AI/App/controllers"
 	"github.com/NightGhost404/SWAP_AI/App/database"
 	"github.com/NightGhost404/SWAP_AI/App/models"
 	"github.com/gin-gonic/gin"
@@ -12,6 +13,18 @@ import (
 // SetupRouter configures the Gin router with all routes
 func SetupRouter() *gin.Engine {
 	r := gin.Default()
+
+	// CORS middleware
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+		if c.Request.Method == http.MethodOptions {
+			c.AbortWithStatus(200)
+			return
+		}
+		c.Next()
+	})
 
 	// Middleware
 	r.Use(gin.Logger())
@@ -30,19 +43,19 @@ func SetupRouter() *gin.Engine {
 		// Auth routes
 		auth := api.Group("/auth")
 		{
-			auth.POST("/register", registerUser)
-			auth.POST("/login", loginUser)
+			auth.POST("/register", controllers.RegisterUser)
+			auth.POST("/login", controllers.LoginUser)
 		}
 
 		// Client routes (protected)
 		clients := api.Group("/clients")
 		clients.Use(authMiddleware())
 		{
-			clients.GET("", getClients)
-			clients.POST("", createClient)
-			clients.GET("/:id", getClientByID)
-			clients.PUT("/:id", updateClient)
-			clients.DELETE("/:id", deleteClient)
+			clients.GET("", controllers.GetClients)
+			clients.POST("", controllers.CreateClient)
+			clients.GET("/:id", controllers.GetClientByID)
+			clients.PUT("/:id", controllers.UpdateClient)
+			clients.DELETE("/:id", controllers.DeleteClient)
 		}
 	}
 
@@ -72,45 +85,19 @@ func StartServer() {
 	}
 }
 
-// Placeholder route handlers
-func registerUser(c *gin.Context) {
-	// Implementation will be added later
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet"})
-}
-
-func loginUser(c *gin.Context) {
-	// Implementation will be added later
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet"})
-}
-
-func getClients(c *gin.Context) {
-	// Implementation will be added later
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet"})
-}
-
-func createClient(c *gin.Context) {
-	// Implementation will be added later
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet"})
-}
-
-func getClientByID(c *gin.Context) {
-	// Implementation will be added later
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet"})
-}
-
-func updateClient(c *gin.Context) {
-	// Implementation will be added later
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet"})
-}
-
-func deleteClient(c *gin.Context) {
-	// Implementation will be added later
-	c.JSON(http.StatusNotImplemented, gin.H{"message": "Not implemented yet"})
-}
-
+// Middleware for authentication
 func authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// JWT authentication will be implemented later
+		// For testing purposes, we'll skip actual JWT validation
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is required"})
+			c.Abort()
+			return
+		}
+
+		// In a real application, validate the JWT token here
+		// For testing, we'll just let the request through
 		c.Next()
 	}
 }
