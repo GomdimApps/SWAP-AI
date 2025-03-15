@@ -7,6 +7,7 @@ import (
 
 	"github.com/NightGhost404/SWAP_AI/App/controllers"
 	"github.com/NightGhost404/SWAP_AI/App/database"
+	"github.com/NightGhost404/SWAP_AI/App/models"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -56,7 +57,7 @@ func SetupRouter() *gin.Engine {
 			clients.POST("", controllers.CreateClient)
 			clients.GET("/:id", controllers.GetClientByID)
 			clients.PUT("/:id", controllers.UpdateClient)
-			clients.DELETE("/:id", controllers.DeleteClient) // This route already exists
+			clients.DELETE("/:id", controllers.DeleteClient)
 		}
 	}
 
@@ -101,11 +102,24 @@ func authMiddleware() gin.HandlerFunc {
 
 		token := tokenParts[1]
 
-		// For testing purposes, we'll treat the token as the user ID directly
-		// In a real app, this would involve proper JWT validation
+		// Parse the UUID from the token
 		userID, err := uuid.Parse(token)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+			c.Abort()
+			return
+		}
+
+		// Verify user exists in database
+		var count int64
+		if err := database.DB.Model(&models.User{}).Where("id = ?", userID).Count(&count).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to validate token"})
+			c.Abort()
+			return
+		}
+
+		if count == 0 {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user token"})
 			c.Abort()
 			return
 		}
