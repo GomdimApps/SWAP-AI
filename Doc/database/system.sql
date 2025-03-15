@@ -31,7 +31,8 @@ CREATE TABLE system.users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE system.folders (
+-- Moved from system to files schema
+CREATE TABLE files.folders (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -39,7 +40,7 @@ CREATE TABLE system.folders (
 CREATE TABLE clients.clients_swap (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES system.users(id) ON DELETE CASCADE,
-    folder_id UUID NOT NULL REFERENCES system.folders(id) ON DELETE CASCADE,
+    folder_id UUID NOT NULL REFERENCES files.folders(id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
     status VARCHAR(10) CHECK (status IN ('ativo', 'inativo')) DEFAULT 'ativo',
     email VARCHAR(255),

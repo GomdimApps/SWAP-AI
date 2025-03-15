@@ -30,7 +30,7 @@ type Folder struct {
 
 // TableName overrides the table name
 func (Folder) TableName() string {
-	return "system.folders"
+	return "files.folders"
 }
 
 // Client represents a client belonging to a user
