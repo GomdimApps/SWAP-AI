@@ -13,8 +13,9 @@ import (
 )
 
 const (
-	DefaultBaseDir  = "/var/upload"
-	MaxUploadSizeMB = 110 // 110MB
+	DefaultBaseDir        = "/var/upload"
+	AdminProcessedBaseDir = "/var/upload/processed"
+	MaxUploadSizeMB       = 110 // 110MB
 )
 
 // FileUploadConfig holds configuration for file uploads
@@ -24,10 +25,19 @@ type FileUploadConfig struct {
 	AllowedExts []string
 }
 
-// GetDefaultConfig returns the default upload configuration
+// GetDefaultConfig returns the default upload configuration for clients
 func GetDefaultConfig() *FileUploadConfig {
 	return &FileUploadConfig{
 		BaseDir:     getEnv("UPLOAD_DIR", DefaultBaseDir),
+		MaxSizeMB:   MaxUploadSizeMB,
+		AllowedExts: []string{".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png"},
+	}
+}
+
+// GetAdminUploadConfig returns the upload configuration for admin processed files
+func GetAdminUploadConfig() *FileUploadConfig {
+	return &FileUploadConfig{
+		BaseDir:     getEnv("ADMIN_UPLOAD_DIR", AdminProcessedBaseDir),
 		MaxSizeMB:   MaxUploadSizeMB,
 		AllowedExts: []string{".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png"},
 	}

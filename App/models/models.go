@@ -68,6 +68,8 @@ type FileDocument struct {
 	FilePath     string    `gorm:"not null"`
 	FileSize     int64     `gorm:"not null"`
 	FileType     string
+	ProcessedBy  uuid.UUID `gorm:"type:uuid"`     // User ID that processed this file (if admin uploaded)
+	IsProcessed  bool      `gorm:"default:false"` // Flag indicating if this is a processed file
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }

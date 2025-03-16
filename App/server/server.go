@@ -89,16 +89,32 @@ func SetupRouter() *gin.Engine {
 			clients.POST("/:id/upload", controllers.UploadClientFile)
 			clients.GET("/:id/files", controllers.GetClientFiles)
 		}
+
+		// Admin routes (protected) - new
+		admin := api.Group("/admin")
+		admin.Use(authMiddleware()) // using the same auth for now, could be enhanced with admin-specific checks
+		{
+			// Admin file management routes
+			admin.POST("/:id/upload", controllers.AdminUploadClientFile)
+			admin.GET("/:id/files", controllers.GetAdminProcessedFiles)
+		}
 	}
 
-	// Create upload directory if it doesn't exist
-	uploadDir := uploadConfig.BaseDir
-	if err := os.MkdirAll(uploadDir, 0750); err != nil {
-		log.Printf("Warning: Failed to create upload directory %s: %v", uploadDir, err)
-	} else {
-		log.Printf("Upload directory configured at: %s", uploadDir)
-		log.Printf("Maximum upload size set to: %dMB", uploadConfig.MaxSizeMB)
+	// Create upload directories if they don't exist
+	uploadDirs := []string{
+		uploadConfig.BaseDir,
+		files.GetAdminUploadConfig().BaseDir,
 	}
+
+	for _, dir := range uploadDirs {
+		if err := os.MkdirAll(dir, 0750); err != nil {
+			log.Printf("Warning: Failed to create upload directory %s: %v", dir, err)
+		} else {
+			log.Printf("Upload directory configured at: %s", dir)
+		}
+	}
+
+	log.Printf("Maximum upload size set to: %dMB", uploadConfig.MaxSizeMB)
 
 	return r
 }

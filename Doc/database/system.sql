@@ -63,6 +63,8 @@ CREATE TABLE files.documents (
     file_path VARCHAR(255) NOT NULL,
     file_size BIGINT NOT NULL,
     file_type VARCHAR(100),
+    processed_by UUID,  -- User ID that processed this file (if admin uploaded)
+    is_processed BOOLEAN DEFAULT FALSE,  -- Flag indicating if this is a processed file
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -70,6 +72,8 @@ CREATE TABLE files.documents (
 -- Add indices for file documents
 CREATE INDEX idx_files_client_id ON files.documents(client_id);
 CREATE INDEX idx_files_folder_id ON files.documents(folder_id);
+CREATE INDEX idx_files_processed_by ON files.documents(processed_by);
+CREATE INDEX idx_files_is_processed ON files.documents(is_processed);
 
 -- Create trigger for updating updated_at timestamp
 CREATE OR REPLACE FUNCTION system.update_modified_column()
