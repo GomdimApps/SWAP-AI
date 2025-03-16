@@ -74,7 +74,9 @@ func SetupRouter() *gin.Engine {
 	// Create upload directory if it doesn't exist
 	uploadDir := uploadConfig.BaseDir
 	if err := os.MkdirAll(uploadDir, 0750); err != nil {
-		log.Printf("Warning: Failed to create upload directory: %v", err)
+		log.Printf("Warning: Failed to create upload directory %s: %v", uploadDir, err)
+	} else {
+		log.Printf("Upload directory configured at: %s", uploadDir)
 	}
 
 	return r

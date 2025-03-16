@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	DefaultBaseDir  = "./uploads"
+	DefaultBaseDir  = "/var/upload"
 	MaxUploadSizeMB = 10
 )
 
@@ -40,10 +40,10 @@ func SaveUploadedFile(file *multipart.FileHeader, clientID, folderID uuid.UUID, 
 		return "", "", fmt.Errorf("failed to create base upload directory: %w", err)
 	}
 
-	// Create client-specific directory
-	clientPath := filepath.Join(config.BaseDir, clientID.String())
-	if err := os.MkdirAll(clientPath, 0750); err != nil {
-		return "", "", fmt.Errorf("failed to create client directory: %w", err)
+	// Create folder-specific directory using folder UUID
+	folderPath := filepath.Join(config.BaseDir, folderID.String())
+	if err := os.MkdirAll(folderPath, 0750); err != nil {
+		return "", "", fmt.Errorf("failed to create folder directory: %w", err)
 	}
 
 	// Sanitize and make unique filename
@@ -56,7 +56,7 @@ func SaveUploadedFile(file *multipart.FileHeader, clientID, folderID uuid.UUID, 
 	uniqueFileName := fmt.Sprintf("%d-%s%s", timestamp, uniqueID, fileExt)
 
 	// Full path to save the file
-	filePath := filepath.Join(clientPath, uniqueFileName)
+	filePath := filepath.Join(folderPath, uniqueFileName)
 
 	// Open source file
 	src, err := file.Open()
@@ -83,7 +83,7 @@ func SaveUploadedFile(file *multipart.FileHeader, clientID, folderID uuid.UUID, 
 	}
 
 	// Return the relative storage path and original filename
-	storagePath := filepath.Join(clientID.String(), uniqueFileName)
+	storagePath := filepath.Join(folderID.String(), uniqueFileName)
 	return storagePath, originalName, nil
 }
 
