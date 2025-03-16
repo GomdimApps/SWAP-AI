@@ -13,6 +13,10 @@ import (
 
 // UploadClientFile handles file uploads for a specific client
 func UploadClientFile(c *gin.Context) {
+	// Iniciar log para monitoramento de upload
+	clientIP := c.ClientIP()
+	fmt.Printf("Início de upload - Cliente IP: %s\n", clientIP)
+
 	// Get client ID from URL parameter
 	clientID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -37,8 +41,8 @@ func UploadClientFile(c *gin.Context) {
 	// Get upload configuration
 	config := files.GetDefaultConfig()
 
-	// Check file size limit
-	if c.Request.ContentLength > int64(config.MaxSizeMB)<<20 { // Convert MB to bytes
+	// Check file size limit - A verificação é feita se o Content-Length for informado
+	if c.Request.ContentLength > 0 && c.Request.ContentLength > int64(config.MaxSizeMB)<<20 {
 		c.JSON(http.StatusRequestEntityTooLarge, gin.H{
 			"error":      "File size exceeds limit",
 			"maxSizeMB":  config.MaxSizeMB,
@@ -50,9 +54,13 @@ func UploadClientFile(c *gin.Context) {
 	// Get uploaded file
 	file, err := c.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file upload"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid file upload: %v", err)})
 		return
 	}
+
+	// Log do tamanho do arquivo
+	fmt.Printf("Upload em progresso - Arquivo: %s, Tamanho: %.2f MB\n",
+		file.Filename, float64(file.Size)/(1<<20))
 
 	// Validate file extension
 	if !files.ValidateFileExtension(file.Filename, config.AllowedExts) {
@@ -85,12 +93,16 @@ func UploadClientFile(c *gin.Context) {
 		return
 	}
 
+	// Log de conclusão
+	fmt.Printf("Upload concluído - Arquivo: %s, ID: %s\n", originalName, fileDoc.ID)
+
 	// Return success response
 	c.JSON(http.StatusOK, gin.H{
 		"message":      "File uploaded successfully",
 		"id":           fileDoc.ID,
 		"originalName": fileDoc.OriginalName,
 		"size":         fileDoc.FileSize,
+		"sizeInMB":     float64(fileDoc.FileSize) / (1 << 20),
 		"clientId":     clientID,
 	})
 }

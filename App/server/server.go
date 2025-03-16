@@ -1,10 +1,12 @@
 package server
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/NightGhost404/SWAP_AI/App/controllers"
 	"github.com/NightGhost404/SWAP_AI/App/database"
@@ -16,7 +18,25 @@ import (
 
 // SetupRouter configures the Gin router with all routes
 func SetupRouter() *gin.Engine {
-	r := gin.Default()
+	// Aumentar tamanho máximo do corpo da requisição
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New() // Use New() em vez de Default() para configuração manual
+
+	// Configurar middleware personalizado para lidar com timeouts longos para uploads grandes
+	r.Use(gin.Recovery())
+	r.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
+		return fmt.Sprintf("%s - [%s] \"%s %s %s %d %s \"%s\" %s\"\n",
+			param.ClientIP,
+			param.TimeStamp.Format(time.RFC1123),
+			param.Method,
+			param.Path,
+			param.Request.Proto,
+			param.StatusCode,
+			param.Latency,
+			param.Request.UserAgent(),
+			param.ErrorMessage,
+		)
+	}))
 
 	// CORS middleware
 	r.Use(func(c *gin.Context) {
@@ -30,13 +50,13 @@ func SetupRouter() *gin.Engine {
 		c.Next()
 	})
 
-	// Middleware
-	r.Use(gin.Logger())
-	r.Use(gin.Recovery())
-
 	// Set maximum upload size
 	uploadConfig := files.GetDefaultConfig()
 	r.MaxMultipartMemory = int64(uploadConfig.MaxSizeMB) << 20 // MB to bytes
+
+	// Note: A configuração do timeout é feita na função StartServer
+	// Os timeouts aqui são comentados para evitar a variável não utilizada
+	// Os valores serão: ReadTimeout: 30min, WriteTimeout: 30min, IdleTimeout: 120s
 
 	// Health check
 	r.GET("/health", func(c *gin.Context) {
@@ -77,6 +97,7 @@ func SetupRouter() *gin.Engine {
 		log.Printf("Warning: Failed to create upload directory %s: %v", uploadDir, err)
 	} else {
 		log.Printf("Upload directory configured at: %s", uploadDir)
+		log.Printf("Maximum upload size set to: %dMB", uploadConfig.MaxSizeMB)
 	}
 
 	return r
@@ -92,10 +113,18 @@ func StartServer() {
 	// Setup router
 	router := SetupRouter()
 
-	// Start server
-	port := ":8080"
-	log.Printf("Server starting on port %s", port)
-	if err := router.Run(port); err != nil {
+	// Configure custom HTTP server with longer timeouts
+	server := &http.Server{
+		Addr:         ":8080",
+		Handler:      router,
+		ReadTimeout:  30 * time.Minute,
+		WriteTimeout: 30 * time.Minute,
+		IdleTimeout:  120 * time.Second,
+	}
+
+	// Start server with the custom configuration
+	log.Printf("Server starting on port 8080 with extended timeouts for large file uploads")
+	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }

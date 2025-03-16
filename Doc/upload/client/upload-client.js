@@ -9,27 +9,34 @@ async function uploadFile(filePath, clientId, token) {
         const form = new FormData();
         form.append('file', fs.createReadStream(filePath));
 
-        const response = await axios.post(url, form, {
+        // Configurar limites maiores para permitir arquivos grandes (120MB)
+        const axiosInstance = axios.create({
+            maxContentLength: Infinity,
+            maxBodyLength: Infinity,
+        });
+
+        const response = await axiosInstance.post(url, form, {
             headers: {
                 ...form.getHeaders(),
                 'Authorization': `Bearer ${token}`
-            },
-            maxContentLength: 100 * 1024 * 1024, // 100MB
-            maxBodyLength: 100 * 1024 * 1024,
+            }
         });
 
         console.log('Upload realizado com sucesso:');
         console.log('ID do Arquivo:', response.data.id);
         console.log('Nome do Arquivo:', response.data.originalName);
-        console.log('Tamanho:', (response.data.size / 1024).toFixed(2), 'KB');
+        console.log('Tamanho:', (response.data.size / 1024 / 1024).toFixed(2), 'MB');
         console.log('Mensagem:', response.data.message);
         
     } catch (error) {
         if (error.response) {
             console.error('Erro na resposta do servidor:', error.response.data.error);
             console.error('Status:', error.response.status);
+        } else if (error.request) {
+            console.error('Erro na requisição - não houve resposta do servidor');
+            console.error(error.message);
         } else {
-            console.error('Erro na requisição:', error.message);
+            console.error('Erro ao configurar requisição:', error.message);
         }
     }
 }

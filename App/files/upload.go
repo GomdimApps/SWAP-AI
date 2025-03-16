@@ -14,7 +14,7 @@ import (
 
 const (
 	DefaultBaseDir  = "/var/upload"
-	MaxUploadSizeMB = 10
+	MaxUploadSizeMB = 110 // 110MB
 )
 
 // FileUploadConfig holds configuration for file uploads
@@ -58,23 +58,35 @@ func SaveUploadedFile(file *multipart.FileHeader, clientID, folderID uuid.UUID, 
 	// Full path to save the file
 	filePath := filepath.Join(folderPath, uniqueFileName)
 
-	// Open source file
+	// Open source file with buffer
 	src, err := file.Open()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to open uploaded file: %w", err)
 	}
 	defer src.Close()
 
-	// Create destination file
+	// Create destination file with buffer
 	dst, err := os.Create(filePath)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to create destination file: %w", err)
 	}
 	defer dst.Close()
 
-	// Copy file contents
-	if _, err = io.Copy(dst, src); err != nil {
+	// Usar buffer maior para cópia mais eficiente (8MB buffer)
+	buffer := make([]byte, 8*1024*1024)
+
+	// Copy file contents with progress tracking
+	written, err := io.CopyBuffer(dst, src, buffer)
+	if err != nil {
+		// Em caso de erro, tenta remover o arquivo parcial
+		os.Remove(filePath)
 		return "", "", fmt.Errorf("failed to copy file contents: %w", err)
+	}
+
+	// Verificar tamanho do arquivo copiado
+	if written != file.Size {
+		os.Remove(filePath)
+		return "", "", fmt.Errorf("file size mismatch: expected %d bytes, got %d bytes", file.Size, written)
 	}
 
 	// Sync to ensure write is complete
