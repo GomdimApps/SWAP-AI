@@ -161,3 +161,5 @@ Resposta esperada:
     "message": "Client deleted successfully"
 }
 ```
+
+### Upload de Arquivo para Cliente

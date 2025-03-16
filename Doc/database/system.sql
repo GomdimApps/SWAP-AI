@@ -54,6 +54,23 @@ CREATE INDEX idx_clients_folder_id ON clients.clients_swap(folder_id);
 CREATE INDEX idx_clients_user_id ON clients.clients_swap(user_id);
 CREATE INDEX idx_clients_status ON clients.clients_swap(status);
 
+-- Add documents table to store file metadata
+CREATE TABLE files.documents (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id UUID NOT NULL REFERENCES clients.clients_swap(id) ON DELETE CASCADE,
+    folder_id UUID NOT NULL REFERENCES files.folders(id) ON DELETE CASCADE,
+    original_name VARCHAR(255) NOT NULL,
+    file_path VARCHAR(255) NOT NULL,
+    file_size BIGINT NOT NULL,
+    file_type VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Add indices for file documents
+CREATE INDEX idx_files_client_id ON files.documents(client_id);
+CREATE INDEX idx_files_folder_id ON files.documents(folder_id);
+
 -- Create trigger for updating updated_at timestamp
 CREATE OR REPLACE FUNCTION system.update_modified_column()
 RETURNS TRIGGER AS $$
@@ -69,4 +86,8 @@ FOR EACH ROW EXECUTE FUNCTION system.update_modified_column();
 
 CREATE TRIGGER update_clients_updated_at
 BEFORE UPDATE ON clients.clients_swap
+FOR EACH ROW EXECUTE FUNCTION system.update_modified_column();
+
+CREATE TRIGGER update_documents_updated_at
+BEFORE UPDATE ON files.documents
 FOR EACH ROW EXECUTE FUNCTION system.update_modified_column();

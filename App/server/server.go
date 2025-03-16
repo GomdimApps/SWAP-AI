@@ -3,10 +3,12 @@ package server
 import (
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/NightGhost404/SWAP_AI/App/controllers"
 	"github.com/NightGhost404/SWAP_AI/App/database"
+	"github.com/NightGhost404/SWAP_AI/App/files"
 	"github.com/NightGhost404/SWAP_AI/App/models"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -31,6 +33,10 @@ func SetupRouter() *gin.Engine {
 	// Middleware
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
+
+	// Set maximum upload size
+	uploadConfig := files.GetDefaultConfig()
+	r.MaxMultipartMemory = int64(uploadConfig.MaxSizeMB) << 20 // MB to bytes
 
 	// Health check
 	r.GET("/health", func(c *gin.Context) {
@@ -58,7 +64,17 @@ func SetupRouter() *gin.Engine {
 			clients.GET("/:id", controllers.GetClientByID)
 			clients.PUT("/:id", controllers.UpdateClient)
 			clients.DELETE("/:id", controllers.DeleteClient)
+
+			// Client file management routes
+			clients.POST("/:id/upload", controllers.UploadClientFile)
+			clients.GET("/:id/files", controllers.GetClientFiles)
 		}
+	}
+
+	// Create upload directory if it doesn't exist
+	uploadDir := uploadConfig.BaseDir
+	if err := os.MkdirAll(uploadDir, 0750); err != nil {
+		log.Printf("Warning: Failed to create upload directory: %v", err)
 	}
 
 	return r
