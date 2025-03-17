@@ -19,9 +19,9 @@ func Connect() error {
 	// Default values are provided for local development
 	host := getEnv("DB_HOST", "localhost")
 	port := getEnv("DB_PORT", "5432")
-	user := getEnv("DB_USER", "nexogestor_infra")
+	user := getEnv("DB_USER", "swap_user")
 	password := getEnv("DB_PASSWORD", "password")
-	dbname := getEnv("DB_NAME", "nexogestor")
+	dbname := getEnv("DB_NAME", "swap_database")
 	sslmode := getEnv("DB_SSLMODE", "disable")
 
 	// Create DSN

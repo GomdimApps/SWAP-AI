@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	DefaultBaseDir        = "/var/upload"
-	AdminProcessedBaseDir = "/var/upload/processed"
+	DefaultBaseDir        = "/var/upload/clients/pedding"
+	AdminProcessedBaseDir = "/var/upload/clients/processed"
 	MaxUploadSizeMB       = 110 // 110MB
 )
 
