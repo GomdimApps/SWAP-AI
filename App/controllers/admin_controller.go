@@ -15,35 +15,29 @@ import (
 
 // AdminUploadClientFile handles file uploads for a specific client by an admin
 func AdminUploadClientFile(c *gin.Context) {
-	// Iniciar log para monitoramento de upload administrativo
 	clientIP := c.ClientIP()
 	fmt.Printf("Início de upload administrativo - Admin IP: %s\n", clientIP)
 
-	// Get client ID from URL parameter
 	clientID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid client ID"})
 		return
 	}
 
-	// Get current user ID (admin)
 	userID, ok := GetUserID(c)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found"})
 		return
 	}
 
-	// Verify client exists (without user_id check since admin can access any client)
 	var client models.Client
 	if err := database.DB.Where("id = ?", clientID).First(&client).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
 		return
 	}
 
-	// Get upload configuration with processed directory for admin uploads
 	config := files.GetAdminUploadConfig()
 
-	// Check file size limit
 	if c.Request.ContentLength > 0 && c.Request.ContentLength > int64(config.MaxSizeMB)<<20 {
 		c.JSON(http.StatusRequestEntityTooLarge, gin.H{
 			"error":      "File size exceeds limit",
@@ -53,18 +47,15 @@ func AdminUploadClientFile(c *gin.Context) {
 		return
 	}
 
-	// Get uploaded file
 	file, err := c.FormFile("file")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid file upload: %v", err)})
 		return
 	}
 
-	// Log do tamanho do arquivo
 	fmt.Printf("Upload admin em progresso - Arquivo: %s, Tamanho: %.2f MB\n",
 		file.Filename, float64(file.Size)/(1<<20))
 
-	// Validate file extension
 	if !files.ValidateFileExtension(file.Filename, config.AllowedExts) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":        "File type not allowed",
@@ -73,23 +64,21 @@ func AdminUploadClientFile(c *gin.Context) {
 		return
 	}
 
-	// Save file to processed directory
 	storagePath, originalName, err := files.SaveUploadedFile(file, clientID, client.FolderID, config)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to save file: %v", err)})
 		return
 	}
 
-	// Create admin file document record in database
 	fileDoc := models.FileDocument{
 		ClientID:     clientID,
 		FolderID:     client.FolderID,
 		OriginalName: originalName,
 		FilePath:     storagePath,
 		FileSize:     file.Size,
-		FileType:     http.DetectContentType([]byte(file.Filename)), // Not accurate, but a placeholder
-		ProcessedBy:  userID,                                        // Track which admin processed this file
-		IsProcessed:  true,                                          // Mark as processed since admin uploaded it
+		FileType:     http.DetectContentType([]byte(file.Filename)),
+		ProcessedBy:  userID,
+		IsProcessed:  true,
 	}
 
 	if err := database.DB.Create(&fileDoc).Error; err != nil {
@@ -97,10 +86,8 @@ func AdminUploadClientFile(c *gin.Context) {
 		return
 	}
 
-	// Log de conclusão
 	fmt.Printf("Upload admin concluído - Arquivo: %s, ID: %s\n", originalName, fileDoc.ID)
 
-	// Return success response
 	c.JSON(http.StatusOK, gin.H{
 		"message":      "Admin file uploaded successfully",
 		"id":           fileDoc.ID,
@@ -114,21 +101,18 @@ func AdminUploadClientFile(c *gin.Context) {
 
 // GetAdminProcessedFiles returns all processed files for a specific client
 func GetAdminProcessedFiles(c *gin.Context) {
-	// Get client ID from URL parameter
 	clientID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid client ID"})
 		return
 	}
 
-	// Verify client exists
 	var client models.Client
 	if err := database.DB.Where("id = ?", clientID).First(&client).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
 		return
 	}
 
-	// Get all processed files for this client
 	var files []models.FileDocument
 	if err := database.DB.Where("client_id = ? AND is_processed = true", clientID).Find(&files).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch client processed files"})
@@ -140,19 +124,16 @@ func GetAdminProcessedFiles(c *gin.Context) {
 
 // GetUnprocessedFiles returns all unprocessed files for a specific client
 func GetUnprocessedFiles(c *gin.Context) {
-	// Get client ID from URL parameter
 	clientID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid client ID"})
 		return
 	}
 
-	// Verify client exists and authorization
 	if !verifyClientAccess(c, clientID) {
 		return
 	}
 
-	// Get all unprocessed files for this client
 	var files []models.FileDocument
 	if err := database.DB.Where("client_id = ? AND is_processed = false", clientID).Find(&files).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch client unprocessed files"})
@@ -164,14 +145,12 @@ func GetUnprocessedFiles(c *gin.Context) {
 
 // DeleteUnprocessedFiles deletes unprocessed files for a specific client
 func DeleteUnprocessedFiles(c *gin.Context) {
-	// Get client ID from URL parameter
 	clientID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid client ID"})
 		return
 	}
 
-	// Check if a specific file ID was provided
 	var targetFileID *uuid.UUID
 	if fileIDParam := c.Param("fileID"); fileIDParam != "" {
 		parsedID, err := uuid.Parse(fileIDParam)
@@ -182,25 +161,21 @@ func DeleteUnprocessedFiles(c *gin.Context) {
 		targetFileID = &parsedID
 	}
 
-	// Verify client exists and authorization
 	if !verifyClientAccess(c, clientID) {
 		return
 	}
 
-	// Setup the database query
 	query := database.DB.Where("client_id = ? AND is_processed = false", clientID)
 	if targetFileID != nil {
 		query = query.Where("id = ?", targetFileID)
 	}
 
-	// Find files to delete
 	var filesToDelete []models.FileDocument
 	if err := query.Find(&filesToDelete).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch files for deletion"})
 		return
 	}
 
-	// No files found to delete
 	if len(filesToDelete) == 0 {
 		c.JSON(http.StatusOK, gin.H{
 			"message":      "No matching files found to delete",
@@ -209,7 +184,6 @@ func DeleteUnprocessedFiles(c *gin.Context) {
 		return
 	}
 
-	// Delete files from disk and database
 	config := files.GetDefaultConfig()
 	deletedFiles := deleteFiles(filesToDelete, config.BaseDir)
 
@@ -220,16 +194,13 @@ func DeleteUnprocessedFiles(c *gin.Context) {
 	})
 }
 
-// Helper function to verify client access
 func verifyClientAccess(c *gin.Context, clientID uuid.UUID) bool {
-	// Get current user ID
 	_, ok := GetUserID(c)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return false
 	}
 
-	// Verify client exists
 	var client models.Client
 	if err := database.DB.Where("id = ?", clientID).First(&client).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
@@ -239,19 +210,15 @@ func verifyClientAccess(c *gin.Context, clientID uuid.UUID) bool {
 	return true
 }
 
-// Helper function to delete files from disk and database
 func deleteFiles(files []models.FileDocument, basePath string) []uuid.UUID {
 	var deletedFiles []uuid.UUID
 
 	for _, file := range files {
-		// Delete physical file
 		fullPath := filepath.Join(basePath, file.FilePath)
 		if err := os.Remove(fullPath); err != nil {
-			// Log error but continue processing other files
 			fmt.Printf("Warning: Could not delete file %s: %v\n", fullPath, err)
 		}
 
-		// Delete database record
 		if err := database.DB.Delete(&file).Error; err != nil {
 			fmt.Printf("Warning: Could not delete file record %s: %v\n", file.ID, err)
 		} else {

@@ -18,11 +18,9 @@ import (
 
 // SetupRouter configures the Gin router with all routes
 func SetupRouter() *gin.Engine {
-	// Aumentar tamanho máximo do corpo da requisição
 	gin.SetMode(gin.ReleaseMode)
-	r := gin.New() // Use New() em vez de Default() para configuração manual
+	r := gin.New()
 
-	// Configurar middleware personalizado para lidar com timeouts longos para uploads grandes
 	r.Use(gin.Recovery())
 	r.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
 		return fmt.Sprintf("%s - [%s] \"%s %s %s %d %s \"%s\" %s\"\n",
@@ -50,13 +48,8 @@ func SetupRouter() *gin.Engine {
 		c.Next()
 	})
 
-	// Set maximum upload size
 	uploadConfig := files.GetDefaultConfig()
 	r.MaxMultipartMemory = int64(uploadConfig.MaxSizeMB) << 20 // MB to bytes
-
-	// Note: A configuração do timeout é feita na função StartServer
-	// Os timeouts aqui são comentados para evitar a variável não utilizada
-	// Os valores serão: ReadTimeout: 30min, WriteTimeout: 30min, IdleTimeout: 120s
 
 	// Health check
 	r.GET("/health", func(c *gin.Context) {
@@ -84,8 +77,6 @@ func SetupRouter() *gin.Engine {
 			clients.GET("/:id", controllers.GetClientByID)
 			clients.PUT("/:id", controllers.UpdateClient)
 			clients.DELETE("/:id", controllers.DeleteClient)
-
-			// Client file management routes
 			clients.POST("/:id/upload", controllers.UploadClientFile)
 			clients.GET("/:id/files", controllers.GetClientFiles)
 		}
@@ -94,20 +85,15 @@ func SetupRouter() *gin.Engine {
 		admin := api.Group("/admin")
 		admin.Use(authMiddleware())
 		{
-			// File upload and management
 			admin.POST("/:id/upload", controllers.AdminUploadClientFile)
-
-			// File listing endpoints
 			admin.GET("/:id/files", controllers.GetAdminProcessedFiles)
 			admin.GET("/:id/unprocessed-files", controllers.GetUnprocessedFiles)
-
-			// File deletion endpoints
 			admin.DELETE("/:id/delete-unprocessed", controllers.DeleteUnprocessedFiles)
 			admin.DELETE("/:id/delete-unprocessed/:fileID", controllers.DeleteUnprocessedFiles)
 		}
 	}
 
-	// Create upload directories if they don't exist
+	// Create upload directories
 	uploadDirs := []string{
 		uploadConfig.BaseDir,
 		files.GetAdminUploadConfig().BaseDir,
@@ -128,15 +114,12 @@ func SetupRouter() *gin.Engine {
 
 // StartServer configures and starts the HTTP server
 func StartServer() {
-	// Connect to database
 	if err := database.Connect(); err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	// Setup router
 	router := SetupRouter()
 
-	// Configure custom HTTP server with longer timeouts
 	server := &http.Server{
 		Addr:         ":8080",
 		Handler:      router,
@@ -145,7 +128,6 @@ func StartServer() {
 		IdleTimeout:  120 * time.Second,
 	}
 
-	// Start server with the custom configuration
 	log.Printf("Server starting on port 8080 with extended timeouts for large file uploads")
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
@@ -162,7 +144,6 @@ func authMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Extract the token
 		tokenParts := strings.Split(authHeader, " ")
 		if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization format"})
@@ -172,7 +153,6 @@ func authMiddleware() gin.HandlerFunc {
 
 		token := tokenParts[1]
 
-		// Parse the UUID from the token
 		userID, err := uuid.Parse(token)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
@@ -180,7 +160,6 @@ func authMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Verify user exists in database
 		var count int64
 		if err := database.DB.Model(&models.User{}).Where("id = ?", userID).Count(&count).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to validate token"})
@@ -194,7 +173,6 @@ func authMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Set the user ID in the context
 		c.Set("userID", userID)
 		c.Next()
 	}
