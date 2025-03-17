@@ -1,12 +1,16 @@
 package server
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/NightGhost404/SWAP_AI/App/controllers"
 	"github.com/NightGhost404/SWAP_AI/App/database"
+	"github.com/NightGhost404/SWAP_AI/App/files"
 	"github.com/NightGhost404/SWAP_AI/App/models"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -14,7 +18,23 @@ import (
 
 // SetupRouter configures the Gin router with all routes
 func SetupRouter() *gin.Engine {
-	r := gin.Default()
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+
+	r.Use(gin.Recovery())
+	r.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
+		return fmt.Sprintf("%s - [%s] \"%s %s %s %d %s \"%s\" %s\"\n",
+			param.ClientIP,
+			param.TimeStamp.Format(time.RFC1123),
+			param.Method,
+			param.Path,
+			param.Request.Proto,
+			param.StatusCode,
+			param.Latency,
+			param.Request.UserAgent(),
+			param.ErrorMessage,
+		)
+	}))
 
 	// CORS middleware
 	r.Use(func(c *gin.Context) {
@@ -28,9 +48,8 @@ func SetupRouter() *gin.Engine {
 		c.Next()
 	})
 
-	// Middleware
-	r.Use(gin.Logger())
-	r.Use(gin.Recovery())
+	uploadConfig := files.GetDefaultConfig()
+	r.MaxMultipartMemory = int64(uploadConfig.MaxSizeMB) << 20 // MB to bytes
 
 	// Health check
 	r.GET("/health", func(c *gin.Context) {
@@ -58,26 +77,59 @@ func SetupRouter() *gin.Engine {
 			clients.GET("/:id", controllers.GetClientByID)
 			clients.PUT("/:id", controllers.UpdateClient)
 			clients.DELETE("/:id", controllers.DeleteClient)
+			clients.POST("/:id/upload", controllers.UploadClientFile)
+			clients.GET("/:id/files", controllers.GetClientFiles)
+		}
+
+		// Admin routes (protected)
+		admin := api.Group("/admin")
+		admin.Use(authMiddleware())
+		{
+			admin.POST("/:id/upload", controllers.AdminUploadClientFile)
+			admin.GET("/:id/files", controllers.GetAdminProcessedFiles)
+			admin.GET("/:id/unprocessed-files", controllers.GetUnprocessedFiles)
+			admin.DELETE("/:id/delete-unprocessed", controllers.DeleteUnprocessedFiles)
+			admin.DELETE("/:id/delete-unprocessed/:fileID", controllers.DeleteUnprocessedFiles)
 		}
 	}
+
+	// Create upload directories
+	uploadDirs := []string{
+		uploadConfig.BaseDir,
+		files.GetAdminUploadConfig().BaseDir,
+	}
+
+	for _, dir := range uploadDirs {
+		if err := os.MkdirAll(dir, 0750); err != nil {
+			log.Printf("Warning: Failed to create upload directory %s: %v", dir, err)
+		} else {
+			log.Printf("Upload directory configured at: %s", dir)
+		}
+	}
+
+	log.Printf("Maximum upload size set to: %dMB", uploadConfig.MaxSizeMB)
 
 	return r
 }
 
 // StartServer configures and starts the HTTP server
 func StartServer() {
-	// Connect to database
 	if err := database.Connect(); err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	// Setup router
 	router := SetupRouter()
 
-	// Start server
-	port := ":8080"
-	log.Printf("Server starting on port %s", port)
-	if err := router.Run(port); err != nil {
+	server := &http.Server{
+		Addr:         ":8080",
+		Handler:      router,
+		ReadTimeout:  30 * time.Minute,
+		WriteTimeout: 30 * time.Minute,
+		IdleTimeout:  120 * time.Second,
+	}
+
+	log.Printf("Server starting on port 8080 with extended timeouts for large file uploads")
+	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }
@@ -92,7 +144,6 @@ func authMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Extract the token
 		tokenParts := strings.Split(authHeader, " ")
 		if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization format"})
@@ -102,7 +153,6 @@ func authMiddleware() gin.HandlerFunc {
 
 		token := tokenParts[1]
 
-		// Parse the UUID from the token
 		userID, err := uuid.Parse(token)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
@@ -110,7 +160,6 @@ func authMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Verify user exists in database
 		var count int64
 		if err := database.DB.Model(&models.User{}).Where("id = ?", userID).Count(&count).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to validate token"})
@@ -124,7 +173,6 @@ func authMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Set the user ID in the context
 		c.Set("userID", userID)
 		c.Next()
 	}
