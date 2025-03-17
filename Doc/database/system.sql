@@ -7,9 +7,9 @@ CREATE SCHEMA system;
 CREATE SCHEMA files;
 CREATE SCHEMA transactions;
 GRANT USAGE ON SCHEMA products, clients, system, files, transactions TO swap_user;
-
 ALTER DATABASE swap_database SET default_transaction_isolation = 'READ COMMITTED';
 ALTER DATABASE swap_database SET log_statement = 'all';
+DROP DATABASE IF EXISTS postgres;
 
 CREATE TABLE clients.clients (  
   id UUID PRIMARY KEY,  

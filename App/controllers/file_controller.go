@@ -13,35 +13,29 @@ import (
 
 // UploadClientFile handles file uploads for a specific client
 func UploadClientFile(c *gin.Context) {
-	// Iniciar log para monitoramento de upload
 	clientIP := c.ClientIP()
 	fmt.Printf("Início de upload - Cliente IP: %s\n", clientIP)
 
-	// Get client ID from URL parameter
 	clientID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid client ID"})
 		return
 	}
 
-	// Get current user ID
 	userID, ok := GetUserID(c)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found"})
 		return
 	}
 
-	// Verify client belongs to current user
 	var client models.Client
 	if err := database.DB.Where("id = ? AND user_id = ?", clientID, userID).First(&client).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Client not found or access denied"})
 		return
 	}
 
-	// Get upload configuration
 	config := files.GetDefaultConfig()
 
-	// Check file size limit - A verificação é feita se o Content-Length for informado
 	if c.Request.ContentLength > 0 && c.Request.ContentLength > int64(config.MaxSizeMB)<<20 {
 		c.JSON(http.StatusRequestEntityTooLarge, gin.H{
 			"error":      "File size exceeds limit",
@@ -51,18 +45,15 @@ func UploadClientFile(c *gin.Context) {
 		return
 	}
 
-	// Get uploaded file
 	file, err := c.FormFile("file")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid file upload: %v", err)})
 		return
 	}
 
-	// Log do tamanho do arquivo
 	fmt.Printf("Upload em progresso - Arquivo: %s, Tamanho: %.2f MB\n",
 		file.Filename, float64(file.Size)/(1<<20))
 
-	// Validate file extension
 	if !files.ValidateFileExtension(file.Filename, config.AllowedExts) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":        "File type not allowed",
@@ -71,21 +62,19 @@ func UploadClientFile(c *gin.Context) {
 		return
 	}
 
-	// Save file to disk
 	storagePath, originalName, err := files.SaveUploadedFile(file, clientID, client.FolderID, config)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to save file: %v", err)})
 		return
 	}
 
-	// Create file document record in database
 	fileDoc := models.FileDocument{
 		ClientID:     clientID,
 		FolderID:     client.FolderID,
 		OriginalName: originalName,
 		FilePath:     storagePath,
 		FileSize:     file.Size,
-		FileType:     http.DetectContentType([]byte(file.Filename)), // Not accurate, but a placeholder
+		FileType:     http.DetectContentType([]byte(file.Filename)),
 	}
 
 	if err := database.DB.Create(&fileDoc).Error; err != nil {
@@ -93,10 +82,8 @@ func UploadClientFile(c *gin.Context) {
 		return
 	}
 
-	// Log de conclusão
 	fmt.Printf("Upload concluído - Arquivo: %s, ID: %s\n", originalName, fileDoc.ID)
 
-	// Return success response
 	c.JSON(http.StatusOK, gin.H{
 		"message":      "File uploaded successfully",
 		"id":           fileDoc.ID,
@@ -109,28 +96,24 @@ func UploadClientFile(c *gin.Context) {
 
 // GetClientFiles returns all files for a specific client
 func GetClientFiles(c *gin.Context) {
-	// Get client ID from URL parameter
 	clientID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid client ID"})
 		return
 	}
 
-	// Get current user ID
 	userID, ok := GetUserID(c)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found"})
 		return
 	}
 
-	// Verify client belongs to current user
 	var client models.Client
 	if err := database.DB.Where("id = ? AND user_id = ?", clientID, userID).First(&client).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Client not found or access denied"})
 		return
 	}
 
-	// Get all files for this client
 	var files []models.FileDocument
 	if err := database.DB.Where("client_id = ?", clientID).Find(&files).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch client files"})
