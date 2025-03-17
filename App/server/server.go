@@ -90,14 +90,20 @@ func SetupRouter() *gin.Engine {
 			clients.GET("/:id/files", controllers.GetClientFiles)
 		}
 
-		// Admin routes (protected) - new
+		// Admin routes (protected)
 		admin := api.Group("/admin")
-		admin.Use(authMiddleware()) // using the same auth for now, could be enhanced with admin-specific checks
+		admin.Use(authMiddleware())
 		{
-			// Admin file management routes
+			// File upload and management
 			admin.POST("/:id/upload", controllers.AdminUploadClientFile)
+
+			// File listing endpoints
 			admin.GET("/:id/files", controllers.GetAdminProcessedFiles)
-			admin.DELETE("/:id/delete-unprocessed", controllers.DeleteUnprocessedFiles) // New endpoint
+			admin.GET("/:id/unprocessed-files", controllers.GetUnprocessedFiles)
+
+			// File deletion endpoints
+			admin.DELETE("/:id/delete-unprocessed", controllers.DeleteUnprocessedFiles)
+			admin.DELETE("/:id/delete-unprocessed/:fileID", controllers.DeleteUnprocessedFiles)
 		}
 	}
 

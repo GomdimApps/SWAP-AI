@@ -138,6 +138,30 @@ func GetAdminProcessedFiles(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"files": files})
 }
 
+// GetUnprocessedFiles returns all unprocessed files for a specific client
+func GetUnprocessedFiles(c *gin.Context) {
+	// Get client ID from URL parameter
+	clientID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid client ID"})
+		return
+	}
+
+	// Verify client exists and authorization
+	if !verifyClientAccess(c, clientID) {
+		return
+	}
+
+	// Get all unprocessed files for this client
+	var files []models.FileDocument
+	if err := database.DB.Where("client_id = ? AND is_processed = false", clientID).Find(&files).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch client unprocessed files"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"files": files})
+}
+
 // DeleteUnprocessedFiles deletes unprocessed files for a specific client
 func DeleteUnprocessedFiles(c *gin.Context) {
 	// Get client ID from URL parameter
@@ -147,48 +171,83 @@ func DeleteUnprocessedFiles(c *gin.Context) {
 		return
 	}
 
-	// Get current user ID (admin)
-	_, ok := GetUserID(c)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found"})
+	// Check if a specific file ID was provided
+	var targetFileID *uuid.UUID
+	if fileIDParam := c.Param("fileID"); fileIDParam != "" {
+		parsedID, err := uuid.Parse(fileIDParam)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file ID"})
+			return
+		}
+		targetFileID = &parsedID
+	}
+
+	// Verify client exists and authorization
+	if !verifyClientAccess(c, clientID) {
 		return
 	}
 
-	// Verify client exists
-	var client models.Client
-	if err := database.DB.Where("id = ?", clientID).First(&client).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
+	// Setup the database query
+	query := database.DB.Where("client_id = ? AND is_processed = false", clientID)
+	if targetFileID != nil {
+		query = query.Where("id = ?", targetFileID)
+	}
+
+	// Find files to delete
+	var filesToDelete []models.FileDocument
+	if err := query.Find(&filesToDelete).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch files for deletion"})
 		return
 	}
 
-	// Get default upload config for file path resolution
-	config := files.GetDefaultConfig()
-
-	// Fetch unprocessed files for this client
-	var unprocessedFiles []models.FileDocument
-	if err := database.DB.Where("client_id = ? AND is_processed = false", clientID).Find(&unprocessedFiles).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch unprocessed files"})
-		return
-	}
-
-	// No files to delete
-	if len(unprocessedFiles) == 0 {
+	// No files found to delete
+	if len(filesToDelete) == 0 {
 		c.JSON(http.StatusOK, gin.H{
-			"message":      "No unprocessed files found to delete",
+			"message":      "No matching files found to delete",
 			"deletedCount": 0,
 		})
 		return
 	}
 
 	// Delete files from disk and database
-	deletedCount := 0
-	for _, file := range unprocessedFiles {
-		// Construct full file path
-		fullPath := filepath.Join(config.BaseDir, file.FilePath)
+	config := files.GetDefaultConfig()
+	deletedFiles := deleteFiles(filesToDelete, config.BaseDir)
 
+	c.JSON(http.StatusOK, gin.H{
+		"message":      "Files deleted successfully",
+		"deletedCount": len(deletedFiles),
+		"deletedFiles": deletedFiles,
+	})
+}
+
+// Helper function to verify client access
+func verifyClientAccess(c *gin.Context, clientID uuid.UUID) bool {
+	// Get current user ID
+	_, ok := GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return false
+	}
+
+	// Verify client exists
+	var client models.Client
+	if err := database.DB.Where("id = ?", clientID).First(&client).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
+		return false
+	}
+
+	return true
+}
+
+// Helper function to delete files from disk and database
+func deleteFiles(files []models.FileDocument, basePath string) []uuid.UUID {
+	var deletedFiles []uuid.UUID
+
+	for _, file := range files {
 		// Delete physical file
+		fullPath := filepath.Join(basePath, file.FilePath)
 		if err := os.Remove(fullPath); err != nil {
-			// Log error but continue with others
+			// Log error but continue processing other files
 			fmt.Printf("Warning: Could not delete file %s: %v\n", fullPath, err)
 		}
 
@@ -196,12 +255,9 @@ func DeleteUnprocessedFiles(c *gin.Context) {
 		if err := database.DB.Delete(&file).Error; err != nil {
 			fmt.Printf("Warning: Could not delete file record %s: %v\n", file.ID, err)
 		} else {
-			deletedCount++
+			deletedFiles = append(deletedFiles, file.ID)
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message":      "Unprocessed files deleted successfully",
-		"deletedCount": deletedCount,
-	})
+	return deletedFiles
 }

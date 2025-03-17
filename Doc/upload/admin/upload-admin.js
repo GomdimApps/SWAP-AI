@@ -2,106 +2,135 @@ const fs = require('fs');
 const FormData = require('form-data');
 const axios = require('axios');
 
-async function adminUploadFile(filePath, clientId, token) {
-    const url = `http://192.168.10.3:8080/api/v1/admin/${clientId}/upload`;
+// Base configuration
+const API_URL = 'http://192.168.10.3:8080/api/v1/admin';
+const MAX_UPLOAD_SIZE = 110; // MB
 
-    try {
-        const form = new FormData();
-        form.append('file', fs.createReadStream(filePath));
-
-        // Configurar limites maiores para permitir arquivos grandes (110MB)
-        const axiosInstance = axios.create({
-            maxContentLength: Infinity,
-            maxBodyLength: Infinity,
-        });
-
-        const response = await axiosInstance.post(url, form, {
-            headers: {
-                ...form.getHeaders(),
-                'Authorization': `Bearer ${token}`
-            }
-        });
-
-        console.log('Upload administrativo realizado com sucesso:');
-        console.log('ID do Arquivo:', response.data.id);
-        console.log('Nome do Arquivo:', response.data.originalName);
-        console.log('Tamanho:', (response.data.size / 1024 / 1024).toFixed(2), 'MB');
-        console.log('Cliente ID:', response.data.clientId);
-        console.log('Processado por:', response.data.processedBy);
-        console.log('Mensagem:', response.data.message);
-
-        // Return the file ID for further processing
-        const fileId = response.data.id;
-        
-        // If successful, delete the original unprocessed file
-        if (fileId) {
-            await deleteOriginalFile(clientId, token);
+/**
+ * Upload a processed file to the server
+ * @param {string} filePath - Path to the file to upload
+ * @param {string} clientId - UUID of the client
+ * @param {string} token - Authentication token
+ * @param {string} originalFileId - Optional ID of the original file to delete
+ * @returns {Promise<string|null>} The ID of the uploaded file or null on failure
+ */
+async function processAndUpload(filePath, clientId, token, originalFileId = null) {
+  try {
+    console.log(`Starting admin upload for client ${clientId}...`);
+    console.log(`File: ${filePath}`);
+    
+    // Create form with file
+    const form = new FormData();
+    form.append('file', fs.createReadStream(filePath));
+    
+    // Configure axios with unlimited size
+    const client = axios.create({
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity
+    });
+    
+    // 1. Upload the processed file
+    console.log('Uploading processed file...');
+    const uploadResponse = await client.post(
+      `${API_URL}/${clientId}/upload`,
+      form,
+      {
+        headers: {
+          ...form.getHeaders(),
+          'Authorization': `Bearer ${token}`
         }
-        
-        return fileId;
-        
-    } catch (error) {
-        if (error.response) {
-            console.error('Erro na resposta do servidor:', error.response.data.error);
-            console.error('Status:', error.response.status);
-        } else if (error.request) {
-            console.error('Erro na requisição - não houve resposta do servidor');
-            console.error(error.message);
-        } else {
-            console.error('Erro ao configurar requisição:', error.message);
-        }
-        return null;
+      }
+    );
+    
+    // Extract file information
+    const { id: fileId, originalName, size } = uploadResponse.data;
+    console.log(`✓ Upload successful - File ID: ${fileId}`);
+    console.log(`  Name: ${originalName}`);
+    console.log(`  Size: ${(size / 1024 / 1024).toFixed(2)} MB`);
+    
+    // 2. Delete the original unprocessed file if ID was provided
+    if (originalFileId) {
+      console.log(`Deleting original file (ID: ${originalFileId})...`);
+      const deleteUrl = `${API_URL}/${clientId}/delete-unprocessed/${originalFileId}`;
+      
+      const deleteResponse = await client.delete(deleteUrl, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      console.log(`✓ Original file deleted: ${deleteResponse.data.message}`);
     }
-}
-
-async function deleteOriginalFile(clientId, token) {
-    try {
-        const url = `http://192.168.10.3:8080/api/v1/admin/${clientId}/delete-unprocessed`;
-        
-        const response = await axios.delete(url, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        console.log('Arquivo original não processado excluído com sucesso:');
-        console.log('Mensagem:', response.data.message);
-        console.log('Arquivos excluídos:', response.data.deletedCount);
-        
-        return true;
-    } catch (error) {
-        console.error('Erro ao excluir arquivo original:');
-        if (error.response) {
-            console.error(error.response.data.error);
-        } else {
-            console.error(error.message);
-        }
-        return false;
-    }
-}
-
-// Função principal para ser chamada de forma assíncrona
-async function processFile(filePath, clientId, token) {
-    const fileId = await adminUploadFile(filePath, clientId, token);
-    if (fileId) {
-        console.log(`Processamento concluído. ID do arquivo processado: ${fileId}`);
-        return fileId;
+    
+    return fileId;
+    
+  } catch (error) {
+    console.error('Error during file processing:');
+    
+    if (error.response) {
+      console.error(`Server error (${error.response.status}): ${error.response.data.error}`);
+    } else if (error.request) {
+      console.error('No response received from server. Check network connection.');
     } else {
-        console.error('Falha no processamento do arquivo.');
-        return null;
+      console.error(`Request error: ${error.message}`);
     }
+    
+    return null;
+  }
 }
 
-// Configurações
-const filePath = './documento_processado.pdf';
-const clientId = '<client_uuid>'; // UUID do cliente
-const token = '<token_uuid>'; // Token de autenticação (sem o prefixo "Bearer")
+/**
+ * List all unprocessed files for a client
+ * @param {string} clientId - UUID of the client
+ * @param {string} token - Authentication token
+ * @returns {Promise<Array>} Array of unprocessed files
+ */
+async function listUnprocessedFiles(clientId, token) {
+  try {
+    const response = await axios.get(
+      `${API_URL}/${clientId}/unprocessed-files`,
+      { headers: { 'Authorization': `Bearer ${token}` } }
+    );
+    
+    console.log('\nUnprocessed files:');
+    if (response.data.files.length === 0) {
+      console.log('  No unprocessed files found');
+    } else {
+      response.data.files.forEach(file => {
+        console.log(`  • ID: ${file.id}`);
+        console.log(`    Name: ${file.originalName}`);
+        console.log(`    Size: ${(file.fileSize / (1024 * 1024)).toFixed(2)} MB`);
+        console.log('');
+      });
+    }
+    
+    return response.data.files;
+  } catch (error) {
+    console.error('Failed to list files:', error.message);
+    return [];
+  }
+}
 
-// Executar upload administrativo
-processFile(filePath, clientId, token).catch(console.error);
-
-// Export para uso como módulo se necessário
-module.exports = {
-    adminUploadFile,
-    processFile
-};
+// Run as standalone script or export as module
+if (require.main === module) {
+  // CLI execution
+  const filePath = './documento_processado.pdf';
+  const clientId = '<client_uuid>'; // UUID of the client
+  const originalFileId = '<original_file_uuid>'; // Optional: UUID of original file to delete
+  const token = '<token_uuid>'; // Auth token (without Bearer prefix)
+  
+  // Run the processor
+  processAndUpload(filePath, clientId, token, originalFileId)
+    .then(fileId => {
+      if (fileId) {
+        console.log(`\n✅ Process completed successfully. New file ID: ${fileId}`);
+      } else {
+        console.error('\n❌ Process failed');
+      }
+    })
+    .catch(console.error);
+} else {
+  // Module export
+  module.exports = {
+    processAndUpload,
+    listUnprocessedFiles
+  };
+}
