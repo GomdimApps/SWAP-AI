@@ -97,6 +97,7 @@ func SetupRouter() *gin.Engine {
 			// Admin file management routes
 			admin.POST("/:id/upload", controllers.AdminUploadClientFile)
 			admin.GET("/:id/files", controllers.GetAdminProcessedFiles)
+			admin.DELETE("/:id/delete-unprocessed", controllers.DeleteUnprocessedFiles) // New endpoint
 		}
 	}
 

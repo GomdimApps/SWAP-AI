@@ -3,6 +3,8 @@ package controllers
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"github.com/NightGhost404/SWAP_AI/App/database"
 	"github.com/NightGhost404/SWAP_AI/App/files"
@@ -134,4 +136,72 @@ func GetAdminProcessedFiles(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"files": files})
+}
+
+// DeleteUnprocessedFiles deletes unprocessed files for a specific client
+func DeleteUnprocessedFiles(c *gin.Context) {
+	// Get client ID from URL parameter
+	clientID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid client ID"})
+		return
+	}
+
+	// Get current user ID (admin)
+	_, ok := GetUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found"})
+		return
+	}
+
+	// Verify client exists
+	var client models.Client
+	if err := database.DB.Where("id = ?", clientID).First(&client).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
+		return
+	}
+
+	// Get default upload config for file path resolution
+	config := files.GetDefaultConfig()
+
+	// Fetch unprocessed files for this client
+	var unprocessedFiles []models.FileDocument
+	if err := database.DB.Where("client_id = ? AND is_processed = false", clientID).Find(&unprocessedFiles).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch unprocessed files"})
+		return
+	}
+
+	// No files to delete
+	if len(unprocessedFiles) == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"message":      "No unprocessed files found to delete",
+			"deletedCount": 0,
+		})
+		return
+	}
+
+	// Delete files from disk and database
+	deletedCount := 0
+	for _, file := range unprocessedFiles {
+		// Construct full file path
+		fullPath := filepath.Join(config.BaseDir, file.FilePath)
+
+		// Delete physical file
+		if err := os.Remove(fullPath); err != nil {
+			// Log error but continue with others
+			fmt.Printf("Warning: Could not delete file %s: %v\n", fullPath, err)
+		}
+
+		// Delete database record
+		if err := database.DB.Delete(&file).Error; err != nil {
+			fmt.Printf("Warning: Could not delete file record %s: %v\n", file.ID, err)
+		} else {
+			deletedCount++
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":      "Unprocessed files deleted successfully",
+		"deletedCount": deletedCount,
+	})
 }
