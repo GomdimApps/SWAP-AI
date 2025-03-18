@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	cleanupInterval = 1 * time.Hour
+	cleanupInterval = 1 * time.Minute
 	maxFileAge      = 5 * 24 * time.Hour
 )
 
