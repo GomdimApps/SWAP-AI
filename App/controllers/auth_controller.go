@@ -2,11 +2,11 @@ package controllers
 
 import (
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/NightGhost404/SWAP_AI/App/database"
 	"github.com/NightGhost404/SWAP_AI/App/models"
+	"github.com/NightGhost404/SWAP_AI/App/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
@@ -64,18 +64,13 @@ func RegisterUser(c *gin.Context) {
 		return
 	}
 
-	// Gera token JWT (ao contrário de usar apenas o UUID)
-	secretKey := os.Getenv("SECRET_KEY")
-	if secretKey == "" {
-		secretKey = "mysecret"
-	}
+	// Generate JWT token using the util function
 	claims := jwt.MapClaims{
 		"user_id": user.ID.String(),
 		"type":    "user",
 		"exp":     time.Now().Add(24 * time.Hour).Unix(),
 	}
-	tokenJWT := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := tokenJWT.SignedString([]byte(secretKey))
+	tokenString, err := utils.GenerateToken(claims)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Token generation failed"})
 		return
@@ -109,19 +104,13 @@ func LoginUser(c *gin.Context) {
 		return
 	}
 
-	secretKey := os.Getenv("SECRET_KEY")
-	if secretKey == "" {
-		secretKey = "mysecret"
-	}
-
+	// Generate JWT token using the util function
 	claims := jwt.MapClaims{
 		"user_id": user.ID.String(),
 		"type":    "user",
 		"exp":     time.Now().Add(24 * time.Hour).Unix(),
 	}
-
-	tokenJWT := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := tokenJWT.SignedString([]byte(secretKey))
+	tokenString, err := utils.GenerateToken(claims)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Token generation failed"})
 		return

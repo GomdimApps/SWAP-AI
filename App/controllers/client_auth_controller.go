@@ -2,11 +2,11 @@ package controllers
 
 import (
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/NightGhost404/SWAP_AI/App/database"
 	"github.com/NightGhost404/SWAP_AI/App/models"
+	"github.com/NightGhost404/SWAP_AI/App/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
@@ -43,19 +43,12 @@ func LoginClient(c *gin.Context) {
 		return
 	}
 
-	secretKey := os.Getenv("SECRET_KEY")
-	if secretKey == "" {
-		secretKey = "mysecret"
-	}
-
 	claims := jwt.MapClaims{
 		"client_id": client.ID.String(),
 		"type":      "client",
 		"exp":       time.Now().Add(24 * time.Hour).Unix(),
 	}
-
-	tokenJWT := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := tokenJWT.SignedString([]byte(secretKey))
+	tokenString, err := utils.GenerateToken(claims)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Token generation failed"})
 		return
