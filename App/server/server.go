@@ -16,7 +16,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// SetupRouter configures the Gin router with all routes
 func SetupRouter() *gin.Engine {
 	files.StartCleanupRoutine()
 	gin.SetMode(gin.ReleaseMode)
@@ -37,7 +36,6 @@ func SetupRouter() *gin.Engine {
 		)
 	}))
 
-	// CORS middleware
 	r.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
@@ -50,28 +48,21 @@ func SetupRouter() *gin.Engine {
 	})
 
 	uploadConfig := files.GetDefaultConfig()
-	r.MaxMultipartMemory = int64(uploadConfig.MaxSizeMB) << 20 // MB to bytes
+	r.MaxMultipartMemory = int64(uploadConfig.MaxSizeMB) << 20
 
-	// Health check
 	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"status": "ok",
-		})
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	// API Routes
 	api := r.Group("/api/v1")
 	{
-		// Auth routes
 		auth := api.Group("/auth")
 		{
 			auth.POST("/register", controllers.RegisterUser)
 			auth.POST("/login", controllers.LoginUser)
-			// Nova rota para login de clientes
 			auth.POST("/client/login", controllers.LoginClient)
 		}
 
-		// Client routes (protected)
 		clients := api.Group("/clients")
 		clients.Use(authMiddleware())
 		{
@@ -84,7 +75,6 @@ func SetupRouter() *gin.Engine {
 			clients.GET("/:id/files", controllers.GetClientFiles)
 		}
 
-		// Admin routes (protected)
 		admin := api.Group("/admin")
 		admin.Use(authMiddleware())
 		{
@@ -96,7 +86,6 @@ func SetupRouter() *gin.Engine {
 		}
 	}
 
-	// Create upload directories
 	uploadDirs := []string{
 		uploadConfig.BaseDir,
 		files.GetAdminUploadConfig().BaseDir,
@@ -115,7 +104,6 @@ func SetupRouter() *gin.Engine {
 	return r
 }
 
-// StartServer configures and starts the HTTP server
 func StartServer() {
 	if err := database.Connect(); err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
@@ -137,7 +125,6 @@ func StartServer() {
 	}
 }
 
-// Middleware for authentication
 func authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")

@@ -76,6 +76,25 @@ Resposta esperada:
 }
 ```
 
+### Login de Cliente
+Para fazer login como cliente, utilize o endpoint abaixo:
+
+```bash
+curl -X POST http://192.168.10.3:8080/api/v1/auth/client/login \
+    -H "Content-Type: application/json" \
+    -d '{"email":"client@example.com","password":"clientpassword"}'
+```
+
+Resposta esperada:
+```json
+{
+    "token": "Bearer <client_uuid>",
+    "clientId": "<client_uuid>",
+    "email": "client@example.com",
+    "expiresAt": 1678909876
+}
+```
+
 ### Criar Cliente
 
 ```bash

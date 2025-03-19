@@ -42,7 +42,6 @@ func LoginClient(c *gin.Context) {
 		return
 	}
 
-	// Gerar token (aqui, usamos o UUID do cliente como token)
 	token := client.ID.String()
 
 	c.JSON(http.StatusOK, ClientAuthResponse{
