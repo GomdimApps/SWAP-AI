@@ -73,6 +73,8 @@ func SetupRouter() *gin.Engine {
 			clients.DELETE("/:id", controllers.DeleteClient)
 			clients.POST("/:id/upload", controllers.UploadClientFile)
 			clients.GET("/:id/files", controllers.GetClientFiles)
+			clients.GET("/:id/pending-files", controllers.ListPendingClientFiles)
+			clients.GET("/:id/processed-files", controllers.ListProcessedClientFiles)
 		}
 
 		admin := api.Group("/admin")

@@ -194,3 +194,59 @@ Resposta esperada:
     "expiresAt": 1678909876
 }
 ```
+
+### Listar Arquivos Pendentes do Cliente
+
+Utilize o endpoint abaixo para listar os arquivos que ainda não foram processados para um cliente. Envie o token JWT de um usuário autenticado no cabeçalho da requisição:
+
+```bash
+curl -X GET http://192.168.10.3:8080/api/v1/clients/<client_uuid>/pending-files \
+    -H "Authorization: Bearer <jwt_token>"
+```
+
+Resposta esperada:
+```json
+{
+    "pending_files": [
+        {
+            "ID": "<file_uuid>",
+            "ClientID": "<client_uuid>",
+            "FolderID": "<folder_uuid>",
+            "OriginalName": "documento.pdf",
+            "FilePath": "<client_uuid>/12345678-unique-file.pdf",
+            "FileSize": 12345,
+            "FileType": "application/pdf",
+            "CreatedAt": "2023-01-01T12:00:00Z",
+            "UpdatedAt": "2023-01-01T12:00:00Z"
+        }
+    ]
+}
+```
+
+### Listar Arquivos Processados do Cliente
+
+Utilize o endpoint abaixo para listar os arquivos que já foram processados para um cliente. Envie o token JWT de um usuário autenticado no cabeçalho da requisição:
+
+```bash
+curl -X GET http://192.168.10.3:8080/api/v1/clients/<client_uuid>/processed-files \
+    -H "Authorization: Bearer <jwt_token>"
+```
+
+Resposta esperada:
+```json
+{
+    "processed_files": [
+        {
+            "ID": "<file_uuid>",
+            "ClientID": "<client_uuid>",
+            "FolderID": "<folder_uuid>",
+            "OriginalName": "documento.pdf",
+            "FilePath": "<client_uuid>/12345678-unique-file.pdf",
+            "FileSize": 12345,
+            "FileType": "application/pdf",
+            "CreatedAt": "2023-01-01T12:00:00Z",
+            "UpdatedAt": "2023-01-01T12:30:00Z"
+        }
+    ]
+}
+```
