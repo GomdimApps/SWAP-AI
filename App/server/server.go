@@ -18,6 +18,7 @@ import (
 
 // SetupRouter configures the Gin router with all routes
 func SetupRouter() *gin.Engine {
+	files.StartCleanupRoutine()
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 
