@@ -11,8 +11,8 @@ import (
 	"github.com/NightGhost404/SWAP_AI/App/controllers"
 	"github.com/NightGhost404/SWAP_AI/App/database"
 	"github.com/NightGhost404/SWAP_AI/App/files"
-	"github.com/NightGhost404/SWAP_AI/App/models"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 )
 
@@ -141,24 +141,50 @@ func authMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		token := tokenParts[1]
+		tokenString := tokenParts[1]
+		secretKey := os.Getenv("SECRET_KEY")
+		if secretKey == "" {
+			secretKey = "mysecret"
+		}
 
-		userID, err := uuid.Parse(token)
-		if err != nil {
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			// Validate signing algorithm
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("Unexpected signing method")
+			}
+			return []byte(secretKey), nil
+		})
+
+		if err != nil || !token.Valid {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			c.Abort()
 			return
 		}
 
-		var count int64
-		if err := database.DB.Model(&models.User{}).Where("id = ?", userID).Count(&count).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to validate token"})
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
 			c.Abort()
 			return
 		}
 
-		if count == 0 {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user token"})
+		// Check that the token is for a user (not a client)
+		if claims["type"] != "user" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized token type"})
+			c.Abort()
+			return
+		}
+
+		userIDStr, ok := claims["user_id"].(string)
+		if !ok {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token payload"})
+			c.Abort()
+			return
+		}
+
+		userID, err := uuid.Parse(userIDStr)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user ID in token"})
 			c.Abort()
 			return
 		}
