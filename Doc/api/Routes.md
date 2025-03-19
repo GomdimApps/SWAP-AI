@@ -56,13 +56,33 @@ Resposta esperada:
 }
 ```
 
+### Login de Usuário (Admin)
+
+Para fazer login como usuário (admin), use o comando abaixo:
+
+```bash
+curl -X POST http://192.168.10.3:8080/api/v1/auth/login \
+    -H "Content-Type: application/json" \
+    -d '{"email":"new_user@example.com","password":"password123"}'
+```
+
+Resposta esperada:
+```json
+{
+    "token": "Bearer <uuid>",
+    "userId": "<uuid>",
+    "email": "new_user@example.com",
+    "expiresAt": 1678909876
+}
+```
+
 ### Criar Cliente
 
 ```bash
 curl -X POST http://192.168.10.3:8080/api/v1/clients \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer <token_uuid>" \
-    -d '{"name":"Test Client","email":"client@example.com","whatsapp":"+551199999999"}'
+    -d '{"name":"Test Client","email":"client@example.com","whatsapp":"+551199999999", "password": "clientpassword"}'
 ```
 
 Resposta esperada:

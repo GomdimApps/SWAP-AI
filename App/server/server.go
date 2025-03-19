@@ -67,6 +67,8 @@ func SetupRouter() *gin.Engine {
 		{
 			auth.POST("/register", controllers.RegisterUser)
 			auth.POST("/login", controllers.LoginUser)
+			// Nova rota para login de clientes
+			auth.POST("/client/login", controllers.LoginClient)
 		}
 
 		// Client routes (protected)
