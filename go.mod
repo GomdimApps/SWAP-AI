@@ -5,6 +5,7 @@ go 1.24.0
 require (
 	github.com/GomdimApps/lcme v1.1.7
 	github.com/gin-gonic/gin v1.9.1
+	github.com/golang-jwt/jwt/v4 v4.5.1
 	github.com/google/uuid v1.5.0
 	golang.org/x/crypto v0.16.0
 	gorm.io/driver/postgres v1.5.4

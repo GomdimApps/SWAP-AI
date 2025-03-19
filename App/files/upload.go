@@ -10,7 +10,8 @@ import (
 	"time"
 
 	// Corrigindo o caminho de importação para ferramentas locais
-	"github.com/NightGhost404/SWAP_AI/App/tools"
+
+	"github.com/NightGhost404/SWAP_AI/App/utils"
 	"github.com/google/uuid"
 )
 
@@ -34,7 +35,7 @@ func getDefaultAllowedExtensions() []string {
 func createUploadConfig(dirEnvVar, defaultDir string) *FileUploadConfig {
 	return &FileUploadConfig{
 		BaseDir:     getEnv(dirEnvVar, defaultDir),
-		MaxSizeMB:   tools.GetEnvAsInt("MAX_UPLOAD_SIZE_MB", DefaultMaxUploadSizeMB),
+		MaxSizeMB:   utils.GetEnvAsInt("MAX_UPLOAD_SIZE_MB", DefaultMaxUploadSizeMB),
 		AllowedExts: getDefaultAllowedExtensions(),
 	}
 }
