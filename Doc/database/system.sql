@@ -69,10 +69,9 @@ CREATE TABLE files.documents (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Add indices for file documents
+-- Add indices for file documents (revised)
 CREATE INDEX idx_files_client_id ON files.documents(client_id);
 CREATE INDEX idx_files_folder_id ON files.documents(folder_id);
-CREATE INDEX idx_files_processed_by ON files.documents(processed_by);
 CREATE INDEX idx_files_is_processed ON files.documents(is_processed);
 
 -- Create trigger for updating updated_at timestamp
