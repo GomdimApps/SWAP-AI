@@ -6,7 +6,9 @@ import (
 
 	"github.com/NightGhost404/SWAP_AI/App/database"
 	"github.com/NightGhost404/SWAP_AI/App/models"
+	"github.com/NightGhost404/SWAP_AI/App/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -62,18 +64,27 @@ func RegisterUser(c *gin.Context) {
 		return
 	}
 
-	// Generate token
-	token := user.ID.String() // Just return the UUID as the token
+	// Generate JWT token using the util function
+	claims := jwt.MapClaims{
+		"user_id": user.ID.String(),
+		"type":    "user",
+		"exp":     time.Now().Add(24 * time.Hour).Unix(),
+	}
+	tokenString, err := utils.GenerateToken(claims)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Token generation failed"})
+		return
+	}
 
 	c.JSON(http.StatusCreated, AuthResponse{
-		Token:     token,
+		Token:     tokenString,
 		UserID:    user.ID,
 		Email:     user.Email,
 		ExpiresAt: time.Now().Add(24 * time.Hour).Unix(),
 	})
 }
 
-// LoginUser handles user login
+// LoginUser handles user login with JWT username.
 func LoginUser(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -81,7 +92,6 @@ func LoginUser(c *gin.Context) {
 		return
 	}
 
-	// Find user
 	var user models.User
 	result := database.DB.Where("email = ?", req.Email).First(&user)
 	if result.RowsAffected == 0 {
@@ -89,18 +99,25 @@ func LoginUser(c *gin.Context) {
 		return
 	}
 
-	// Validate password
-	err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password))
-	if err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
 		return
 	}
 
-	// Generate token
-	token := user.ID.String() // Just return the UUID as the token
+	// Generate JWT token using the util function
+	claims := jwt.MapClaims{
+		"user_id": user.ID.String(),
+		"type":    "user",
+		"exp":     time.Now().Add(24 * time.Hour).Unix(),
+	}
+	tokenString, err := utils.GenerateToken(claims)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Token generation failed"})
+		return
+	}
 
 	c.JSON(http.StatusOK, AuthResponse{
-		Token:     token,
+		Token:     tokenString,
 		UserID:    user.ID,
 		Email:     user.Email,
 		ExpiresAt: time.Now().Add(24 * time.Hour).Unix(),

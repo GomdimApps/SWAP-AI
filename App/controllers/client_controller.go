@@ -7,12 +7,14 @@ import (
 	"github.com/NightGhost404/SWAP_AI/App/models"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type ClientRequest struct {
 	Name     string `json:"name" binding:"required"`
-	Email    string `json:"email"`
-	WhatsApp string `json:"whatsapp"`
+	Email    string `json:"email" binding:"required,email"`
+	WhatsApp string `json:"whatsapp" binding:"required"`
+	Password string `json:"password" binding:"required,min=6"`
 	Status   string `json:"status"`
 }
 
@@ -71,14 +73,23 @@ func CreateClient(c *gin.Context) {
 		return
 	}
 
+	// Hash the client's password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		return
+	}
+
 	// Create client
 	client := models.Client{
-		UserID:   userID,
-		FolderID: folder.ID,
-		Name:     req.Name,
-		Email:    req.Email,
-		WhatsApp: req.WhatsApp,
-		Status:   req.Status,
+		UserID:       userID,
+		FolderID:     folder.ID,
+		Name:         req.Name,
+		Email:        req.Email,
+		WhatsApp:     req.WhatsApp,
+		PasswordHash: string(hashedPassword),
+		Status:       req.Status,
 	}
 
 	if err := tx.Create(&client).Error; err != nil {
