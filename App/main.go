@@ -7,6 +7,7 @@ import (
 
 func main() {
 	lcme.ScaleFork(func() {
+		// Inicia o servidor
 		server.StartServer()
 	})
 }
