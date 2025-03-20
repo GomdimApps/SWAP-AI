@@ -64,10 +64,25 @@ type FileDocument struct {
 	FileType     string
 	ProcessedBy  uuid.UUID `gorm:"type:uuid"`
 	IsProcessed  bool      `gorm:"default:false"`
+	ProjectID    uuid.UUID // Novo campo para associar o projeto
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
 
 func (FileDocument) TableName() string {
 	return "files.documents"
+}
+
+// Nova struct para o Projeto
+type Project struct {
+	ID        uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	ClientID  uuid.UUID `gorm:"not null"`
+	File1ID   uuid.UUID `gorm:"not null"`
+	File2ID   uuid.UUID `gorm:"not null"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+func (Project) TableName() string {
+	return "files.project"
 }

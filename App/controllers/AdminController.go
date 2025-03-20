@@ -64,12 +64,16 @@ func AdminUploadClientFile(c *gin.Context) {
 		return
 	}
 
-	storagePath, originalName, err := files.SaveUploadedFile(file, clientID, client.FolderID, config)
+	// Gera um novo projectID
+	projectID := uuid.New()
+	// Chamada atualizada com 5 argumentos
+	storagePath, originalName, err := files.SaveUploadedFile(file, clientID, client.FolderID, projectID, config)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to save file: %v", err)})
 		return
 	}
 
+	// Atualiza o registro do arquivo incluindo o projectID
 	fileDoc := models.FileDocument{
 		ClientID:     clientID,
 		FolderID:     client.FolderID,
@@ -79,6 +83,7 @@ func AdminUploadClientFile(c *gin.Context) {
 		FileType:     http.DetectContentType([]byte(file.Filename)),
 		ProcessedBy:  userID,
 		IsProcessed:  true,
+		ProjectID:    projectID,
 	}
 
 	if err := database.DB.Create(&fileDoc).Error; err != nil {

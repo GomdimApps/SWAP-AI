@@ -35,26 +35,30 @@ func UploadClientFile(c *gin.Context) {
 	}
 
 	config := files.GetDefaultConfig()
+	// Verifica se os dois arquivos foram enviados
+	file1, err1 := c.FormFile("file1")
+	file2, err2 := c.FormFile("file2")
+	if err1 != nil || err2 != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Both file1 and file2 must be uploaded"})
+		return
+	}
 
-	if c.Request.ContentLength > 0 && c.Request.ContentLength > int64(config.MaxSizeMB)<<20 {
+	// Gera um novo projectID para o grupo de arquivos
+	projectID := uuid.New()
+
+	// Definir tamanho máximo permitido para cada arquivo
+	maxAllowed := int64(config.MaxSizeMB) << 20
+	if file1.Size > maxAllowed || file2.Size > maxAllowed {
 		c.JSON(http.StatusRequestEntityTooLarge, gin.H{
-			"error":      "File size exceeds limit",
-			"maxSizeMB":  config.MaxSizeMB,
-			"receivedMB": float64(c.Request.ContentLength) / (1 << 20),
+			"error":     "One or both files exceed the allowed size",
+			"maxSizeMB": config.MaxSizeMB,
+			"file1Size": float64(file1.Size) / (1 << 20),
+			"file2Size": float64(file2.Size) / (1 << 20),
 		})
 		return
 	}
 
-	file, err := c.FormFile("file")
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid file upload: %v", err)})
-		return
-	}
-
-	fmt.Printf("Upload em progresso - Arquivo: %s, Tamanho: %.2f MB\n",
-		file.Filename, float64(file.Size)/(1<<20))
-
-	if !files.ValidateFileExtension(file.Filename, config.AllowedExts) {
+	if !files.ValidateFileExtension(file1.Filename, config.AllowedExts) || !files.ValidateFileExtension(file2.Filename, config.AllowedExts) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":        "File type not allowed",
 			"allowedTypes": config.AllowedExts,
@@ -62,35 +66,66 @@ func UploadClientFile(c *gin.Context) {
 		return
 	}
 
-	storagePath, originalName, err := files.SaveUploadedFile(file, clientID, client.FolderID, config)
+	// Salva os dois arquivos usando a nova estrutura
+	storagePath1, originalName1, err := files.SaveUploadedFile(file1, clientID, client.FolderID, projectID, config)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to save file: %v", err)})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to save file1: %v", err)})
+		return
+	}
+	storagePath2, originalName2, err := files.SaveUploadedFile(file2, clientID, client.FolderID, projectID, config)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to save file2: %v", err)})
 		return
 	}
 
-	fileDoc := models.FileDocument{
+	// Cria registros dos arquivos com o novo campo project_id
+	var fileDoc1, fileDoc2 models.FileDocument
+	fileDoc1 = models.FileDocument{
 		ClientID:     clientID,
 		FolderID:     client.FolderID,
-		OriginalName: originalName,
-		FilePath:     storagePath,
-		FileSize:     file.Size,
-		FileType:     http.DetectContentType([]byte(file.Filename)),
+		OriginalName: originalName1,
+		FilePath:     storagePath1,
+		FileSize:     file1.Size,
+		FileType:     http.DetectContentType([]byte(file1.Filename)),
+		ProjectID:    projectID,
+	}
+	fileDoc2 = models.FileDocument{
+		ClientID:     clientID,
+		FolderID:     client.FolderID,
+		OriginalName: originalName2,
+		FilePath:     storagePath2,
+		FileSize:     file2.Size,
+		FileType:     http.DetectContentType([]byte(file2.Filename)),
+		ProjectID:    projectID,
 	}
 
-	if err := database.DB.Create(&fileDoc).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to record file information"})
+	if err := database.DB.Create(&fileDoc1).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to record file1 information"})
+		return
+	}
+	if err := database.DB.Create(&fileDoc2).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to record file2 information"})
 		return
 	}
 
-	fmt.Printf("Upload concluído - Arquivo: %s, ID: %s\n", originalName, fileDoc.ID)
+	// Cria registro na nova tabela de projeto associando os dois arquivos
+	projectRecord := models.Project{
+		ClientID: clientID,
+		File1ID:  fileDoc1.ID,
+		File2ID:  fileDoc2.ID,
+	}
+	if err := database.DB.Create(&projectRecord).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create project record"})
+		return
+	}
 
+	fmt.Printf("Upload concluído - File1: %s, File2: %s, ProjectID: %s\n", originalName1, originalName2, projectID)
 	c.JSON(http.StatusOK, gin.H{
-		"message":      "File uploaded successfully",
-		"id":           fileDoc.ID,
-		"originalName": fileDoc.OriginalName,
-		"size":         fileDoc.FileSize,
-		"sizeInMB":     float64(fileDoc.FileSize) / (1 << 20),
-		"clientId":     clientID,
+		"message":    "Files uploaded successfully",
+		"file1_id":   fileDoc1.ID,
+		"file2_id":   fileDoc2.ID,
+		"project_id": projectID,
+		"clientId":   clientID,
 	})
 }
 

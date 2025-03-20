@@ -49,14 +49,15 @@ func GetAdminUploadConfig() *FileUploadConfig {
 }
 
 // SaveUploadedFile saves an uploaded file to disk with a unique name
-func SaveUploadedFile(file *multipart.FileHeader, clientID, folderID uuid.UUID, config *FileUploadConfig) (string, string, error) {
+func SaveUploadedFile(file *multipart.FileHeader, clientID, folderID, projectID uuid.UUID, config *FileUploadConfig) (string, string, error) {
+	// Cria a pasta base e a subpasta do projeto
 	if err := os.MkdirAll(config.BaseDir, 0750); err != nil {
 		return "", "", fmt.Errorf("failed to create base upload directory: %w", err)
 	}
-
-	folderPath := filepath.Join(config.BaseDir, folderID.String())
-	if err := os.MkdirAll(folderPath, 0750); err != nil {
-		return "", "", fmt.Errorf("failed to create folder directory: %w", err)
+	// Novo caminho: folderID/projectID/files
+	projectPath := filepath.Join(config.BaseDir, folderID.String(), projectID.String(), "files")
+	if err := os.MkdirAll(projectPath, 0750); err != nil {
+		return "", "", fmt.Errorf("failed to create project directory: %w", err)
 	}
 
 	originalName := sanitizeFileName(file.Filename)
@@ -66,7 +67,7 @@ func SaveUploadedFile(file *multipart.FileHeader, clientID, folderID uuid.UUID, 
 	timestamp := time.Now().UnixNano()
 	uniqueFileName := fmt.Sprintf("%d-%s%s", timestamp, uniqueID, fileExt)
 
-	filePath := filepath.Join(folderPath, uniqueFileName)
+	filePath := filepath.Join(projectPath, uniqueFileName)
 
 	src, err := file.Open()
 	if err != nil {
@@ -97,7 +98,7 @@ func SaveUploadedFile(file *multipart.FileHeader, clientID, folderID uuid.UUID, 
 		return "", "", fmt.Errorf("failed to sync file: %w", err)
 	}
 
-	storagePath := filepath.Join(folderID.String(), uniqueFileName)
+	storagePath := filepath.Join(folderID.String(), projectID.String(), "files", uniqueFileName)
 	return storagePath, originalName, nil
 }
 
