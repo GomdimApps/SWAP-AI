@@ -11,6 +11,7 @@ import (
 	"github.com/NightGhost404/SWAP_AI/App/controllers"
 	"github.com/NightGhost404/SWAP_AI/App/database"
 	"github.com/NightGhost404/SWAP_AI/App/files"
+	"github.com/NightGhost404/SWAP_AI/App/models"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
@@ -195,6 +196,21 @@ func authMiddleware() gin.HandlerFunc {
 		}
 
 		c.Set("userID", userID)
+
+		// Nova verificação: buscar usuário e validar status/expiração
+		var user models.User
+		if err := database.DB.Where("id = ?", userID).First(&user).Error; err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
+			c.Abort()
+			return
+		}
+
+		if time.Now().After(user.ExpiresAt) || user.Status != "ativo" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "User is inactive or expired"})
+			c.Abort()
+			return
+		}
+
 		c.Next()
 	}
 }

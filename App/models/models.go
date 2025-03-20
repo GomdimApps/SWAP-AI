@@ -14,6 +14,10 @@ type User struct {
 	Clients      []Client  `gorm:"foreignKey:UserID"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
+	// Novo campo para a data de expiração
+	ExpiresAt time.Time `gorm:"not null"`
+	// Status do usuário: "ativo" ou "inativo"
+	Status string `gorm:"default:ativo"`
 }
 
 func (User) TableName() string {
