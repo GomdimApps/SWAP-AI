@@ -56,6 +56,7 @@ func CreateClient(c *gin.Context) {
 		return
 	}
 
+	// O campo UserID do client armazena o ID do admin que o criou.
 	tx := database.DB.Begin()
 
 	folder := models.Folder{}

@@ -173,7 +173,8 @@ Resposta esperada:
 
 ### Listar Usuários de Administração
 
-Utilize o token JWT de um usuário admin para listar os usuários de administração:
+Utilize o token JWT de um usuário admin para listar os usuários de administração.  
+A resposta inclui, para cada usuário, um array "clientes" com os UUIDs dos clientes que o admin criou.
 
 ```bash
 curl -X GET http://192.168.10.3:8080/api/v1/admin/users \
@@ -189,9 +190,66 @@ Resposta esperada:
             "Email": "admin@example.com",
             "PasswordHash": "<hash>",
             "CreatedAt": "<timestamp>",
-            "UpdatedAt": "<timestamp>"
+            "UpdatedAt": "<timestamp>",
+            "clientes": ["<client_uuid1>", "<client_uuid2>"]
         }
     ]
+}
+```
+
+### Atualizar Status do Usuário Admin
+
+Utilize o token JWT de um usuário admin para atualizar o status (ativo ou inativo) de um usuário admin.  
+Envie uma requisição PUT com o novo status no corpo em formato JSON.
+
+```bash
+curl -X PUT http://192.168.10.3:8080/api/v1/admin/users/<user_uuid>/status \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer <jwt_token>" \
+    -d '{"status": "ativo"}'
+```
+
+Resposta esperada:
+```json
+{
+    "message": "User status updated successfully",
+    "user": {
+        "ID": "<uuid>",
+        "Email": "admin@example.com",
+        "PasswordHash": "<hash>",
+        "CreatedAt": "<timestamp>",
+        "UpdatedAt": "<timestamp>",
+        "ExpiresAt": "<timestamp>",
+        "Status": "ativo"
+    }
+}
+```
+
+### Atualizar Informações do Usuário Admin
+
+Utilize o token JWT de um usuário admin para atualizar o email e/ou senha do usuário admin.  
+Envie uma requisição PUT com o novo email e/ou a nova senha no corpo em formato JSON.
+
+```bash
+curl -X PUT http://192.168.10.3:8080/api/v1/admin/users/<user_uuid>/info \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer <jwt_token>" \
+    -d '{"email": "new_email@example.com", "password": "newpassword123"}'
+```
+
+Resposta esperada:
+```json
+{
+    "message": "Admin info updated successfully",
+    "user": {
+        "ID": "<uuid>",
+        "Email": "new_email@example.com",
+        "PasswordHash": "<new_hash>",
+        "CreatedAt": "<timestamp>",
+        "UpdatedAt": "<timestamp>",
+        "ExpiresAt": "<timestamp>",
+        "Status": "ativo"
+    }
 }
 ```
 

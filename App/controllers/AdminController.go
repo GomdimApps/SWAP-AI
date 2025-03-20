@@ -11,6 +11,7 @@ import (
 	"github.com/NightGhost404/SWAP_AI/App/models"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func AdminUploadClientFile(c *gin.Context) {
@@ -253,4 +254,76 @@ func deleteFiles(files []models.FileDocument, basePath string) []uuid.UUID {
 	}
 
 	return deletedFiles
+}
+
+func UpdateAdminUserStatus(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	var req struct {
+		Status string `json:"status" binding:"required,oneof=ativo inativo"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var user models.User
+	if err := database.DB.Where("id = ?", id).First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	user.Status = req.Status
+	if err := database.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user status"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User status updated successfully", "user": user})
+}
+
+func UpdateAdminUserInfo(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	var req struct {
+		Email    string `json:"email" binding:"omitempty,email"`
+		Password string `json:"password" binding:"omitempty,min=6"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var user models.User
+	if err := database.DB.Where("id = ?", id).First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	if req.Email != "" {
+		user.Email = req.Email
+	}
+	if req.Password != "" {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+			return
+		}
+		user.PasswordHash = string(hashedPassword)
+	}
+
+	if err := database.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update admin information"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Admin info updated successfully", "user": user})
 }
