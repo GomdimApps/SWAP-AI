@@ -2,10 +2,11 @@ const fs = require('fs');
 const FormData = require('form-data');
 const axios = require('axios');
 
-async function uploadFile(filePath, clientId, token) {
+async function uploadFiles(filePath1, filePath2, clientId, token) {
   try {
     const form = new FormData();
-    form.append('file', fs.createReadStream(filePath));
+    form.append('file1', fs.createReadStream(filePath1));
+    form.append('file2', fs.createReadStream(filePath2));
     
     const resp = await axios.create({
       maxContentLength: Infinity,
@@ -16,11 +17,11 @@ async function uploadFile(filePath, clientId, token) {
       { headers: { ...form.getHeaders(), 'Authorization': `Bearer ${token}` } }
     );
     
-    const { id, originalName, size, message } = resp.data;
-    console.log(`✓ Upload OK: ID=${id}, Nome=${originalName}, Tamanho=${(size/1024/1024).toFixed(2)}MB`);
+    const { file1_id, file2_id, project_id, message } = resp.data;
+    console.log(`✓ Upload OK: File1 ID=${file1_id}, File2 ID=${file2_id}, ProjectID=${project_id}`);
     console.log(`  Mensagem: ${message}`);
     
-    return id;
+    return { file1_id, file2_id, project_id };
   } catch (err) {
     const errorMsg = err.response?.data?.error || err.request ? 'Sem resposta do servidor' : err.message;
     console.error(`✗ Erro: ${errorMsg}`);
@@ -28,8 +29,9 @@ async function uploadFile(filePath, clientId, token) {
   }
 }
 
-const filePath = './documento.pdf';
+const filePath1 = './documento1.pdf';
+const filePath2 = './documento2.pdf';
 const clientId = '<client_uuid>'; // UUID do cliente
 const token = '<token_uuid>'; // Token de autenticação (sem o prefixo "Bearer")
 
-uploadFile(filePath, clientId, token);
+uploadFiles(filePath1, filePath2, clientId, token);
