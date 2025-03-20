@@ -36,8 +36,8 @@ func AdminUploadClientFile(c *gin.Context) {
 		return
 	}
 
+	// Use a configuração de upload admin
 	config := files.GetAdminUploadConfig()
-
 	if c.Request.ContentLength > 0 && c.Request.ContentLength > int64(config.MaxSizeMB)<<20 {
 		c.JSON(http.StatusRequestEntityTooLarge, gin.H{
 			"error":      "File size exceeds limit",
@@ -47,6 +47,21 @@ func AdminUploadClientFile(c *gin.Context) {
 		return
 	}
 
+	// Obtém o project_id do formulário, se fornecido; senão, gera um novo
+	projectIDStr := c.PostForm("project_id")
+	var projectID uuid.UUID
+	if projectIDStr != "" {
+		pid, err := uuid.Parse(projectIDStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project_id"})
+			return
+		}
+		projectID = pid
+	} else {
+		projectID = uuid.New()
+	}
+
+	// Validação do tamanho e extensão do arquivo
 	file, err := c.FormFile("file")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Invalid file upload: %v", err)})
@@ -64,16 +79,14 @@ func AdminUploadClientFile(c *gin.Context) {
 		return
 	}
 
-	// Gera um novo projectID
-	projectID := uuid.New()
-	// Chamada atualizada com 5 argumentos
+	// Salva o arquivo admin usando a configuração ADMIN_UPLOAD_DIR
 	storagePath, originalName, err := files.SaveUploadedFile(file, clientID, client.FolderID, projectID, config)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to save file: %v", err)})
 		return
 	}
 
-	// Atualiza o registro do arquivo incluindo o projectID
+	// Cria registro do arquivo processado
 	fileDoc := models.FileDocument{
 		ClientID:     clientID,
 		FolderID:     client.FolderID,
@@ -85,14 +98,35 @@ func AdminUploadClientFile(c *gin.Context) {
 		IsProcessed:  true,
 		ProjectID:    projectID,
 	}
-
 	if err := database.DB.Create(&fileDoc).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to record file information"})
 		return
 	}
 
-	fmt.Printf("Upload admin concluído - Arquivo: %s, ID: %s\n", originalName, fileDoc.ID)
+	// Obtém configuração do diretório padrão (do cliente)
+	defaultConfig := files.GetDefaultConfig()
 
+	// Apaga os registros e arquivos não processados pertencentes a esse project_id
+	var unprocessedFiles []models.FileDocument
+	if err := database.DB.Where("client_id = ? AND project_id = ? AND is_processed = false", clientID, projectID).Find(&unprocessedFiles).Error; err == nil {
+		for _, uf := range unprocessedFiles {
+			// caminho completo usando a base do cliente
+			path := filepath.Join(defaultConfig.BaseDir, uf.FilePath)
+			if err := os.Remove(path); err != nil {
+				fmt.Printf("Warning: Could not delete file %s: %v\n", path, err)
+			}
+			// Remove o registro do banco
+			database.DB.Delete(&uf)
+		}
+	}
+
+	// Apaga a pasta do projeto do cliente
+	clientProjectFolder := filepath.Join(defaultConfig.BaseDir, client.FolderID.String(), projectID.String())
+	if err := os.RemoveAll(clientProjectFolder); err != nil {
+		fmt.Printf("Warning: Failed to delete client's project folder %s: %v\n", clientProjectFolder, err)
+	}
+
+	fmt.Printf("Upload admin concluído - Arquivo: %s, ID: %s, ProjectID: %s\n", originalName, fileDoc.ID, projectID)
 	c.JSON(http.StatusOK, gin.H{
 		"message":      "Admin file uploaded successfully",
 		"id":           fileDoc.ID,
@@ -101,6 +135,7 @@ func AdminUploadClientFile(c *gin.Context) {
 		"sizeInMB":     float64(fileDoc.FileSize) / (1 << 20),
 		"clientId":     clientID,
 		"processedBy":  userID,
+		"project_id":   projectID,
 	})
 }
 
