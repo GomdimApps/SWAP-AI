@@ -65,15 +65,22 @@ CREATE TABLE files.documents (
     file_type VARCHAR(100),
     processed_by UUID,  -- User ID that processed this file (if admin uploaded)
     is_processed BOOLEAN DEFAULT FALSE,  -- Flag indicating if this is a processed file
+    project_id UUID,  -- Novo campo para associar o projeto
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Add indices for file documents
+-- Add indices for file documents (revised)
 CREATE INDEX idx_files_client_id ON files.documents(client_id);
 CREATE INDEX idx_files_folder_id ON files.documents(folder_id);
-CREATE INDEX idx_files_processed_by ON files.documents(processed_by);
 CREATE INDEX idx_files_is_processed ON files.documents(is_processed);
+
+CREATE TABLE files.project (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id UUID NOT NULL REFERENCES clients.clients_swap(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 -- Create trigger for updating updated_at timestamp
 CREATE OR REPLACE FUNCTION system.update_modified_column()

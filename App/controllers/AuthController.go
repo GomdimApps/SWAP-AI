@@ -14,8 +14,10 @@ import (
 )
 
 type RegisterRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=6"`
+	Email            string `json:"email" binding:"required,email"`
+	Password         string `json:"password" binding:"required,min=6"`
+	ExpirationPeriod string `json:"expirationPeriod" binding:"required,oneof=days weeks months years"`
+	ExpirationValue  int    `json:"expirationValue" binding:"required"`
 }
 
 type LoginRequest struct {
@@ -53,10 +55,32 @@ func RegisterUser(c *gin.Context) {
 		return
 	}
 
-	// Create user
+	now := time.Now()
+	var expiresAt time.Time
+	switch req.ExpirationPeriod {
+	case "days":
+		expiresAt = now.Add(time.Duration(req.ExpirationValue) * 24 * time.Hour)
+	case "weeks":
+		expiresAt = now.Add(time.Duration(req.ExpirationValue*7) * 24 * time.Hour)
+	case "months":
+		expiresAt = now.Add(time.Duration(req.ExpirationValue*30) * 24 * time.Hour)
+	case "years":
+		expiresAt = now.Add(time.Duration(req.ExpirationValue*365) * 24 * time.Hour)
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid expiration period"})
+		return
+	}
+	status := "ativo"
+	if expiresAt.Before(now) {
+		status = "inativo"
+	}
+
+	// Create user with expiration date and status
 	user := models.User{
 		Email:        req.Email,
 		PasswordHash: string(hashedPassword),
+		ExpiresAt:    expiresAt,
+		Status:       status,
 	}
 
 	if err := database.DB.Create(&user).Error; err != nil {
@@ -80,7 +104,7 @@ func RegisterUser(c *gin.Context) {
 		Token:     tokenString,
 		UserID:    user.ID,
 		Email:     user.Email,
-		ExpiresAt: time.Now().Add(24 * time.Hour).Unix(),
+		ExpiresAt: expiresAt.Unix(),
 	})
 }
 

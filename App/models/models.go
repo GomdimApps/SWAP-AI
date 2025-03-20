@@ -14,6 +14,10 @@ type User struct {
 	Clients      []Client  `gorm:"foreignKey:UserID"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
+	// Novo campo para a data de expiração
+	ExpiresAt time.Time `gorm:"not null"`
+	// Status do usuário: "ativo" ou "inativo"
+	Status string `gorm:"default:ativo"`
 }
 
 func (User) TableName() string {
@@ -64,10 +68,23 @@ type FileDocument struct {
 	FileType     string
 	ProcessedBy  uuid.UUID `gorm:"type:uuid"`
 	IsProcessed  bool      `gorm:"default:false"`
+	ProjectID    uuid.UUID // Novo campo para associar o projeto
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
 
 func (FileDocument) TableName() string {
 	return "files.documents"
+}
+
+// Nova struct para o Projeto (ajustada)
+type Project struct {
+	ID        uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	ClientID  uuid.UUID `gorm:"not null"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+func (Project) TableName() string {
+	return "files.project"
 }

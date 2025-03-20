@@ -11,9 +11,9 @@ import (
 	"github.com/NightGhost404/SWAP_AI/App/models"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
-// AdminUploadClientFile handles file uploads for a specific client by an admin
 func AdminUploadClientFile(c *gin.Context) {
 	clientIP := c.ClientIP()
 	fmt.Printf("Início de upload administrativo - Admin IP: %s\n", clientIP)
@@ -37,7 +37,6 @@ func AdminUploadClientFile(c *gin.Context) {
 	}
 
 	config := files.GetAdminUploadConfig()
-
 	if c.Request.ContentLength > 0 && c.Request.ContentLength > int64(config.MaxSizeMB)<<20 {
 		c.JSON(http.StatusRequestEntityTooLarge, gin.H{
 			"error":      "File size exceeds limit",
@@ -45,6 +44,19 @@ func AdminUploadClientFile(c *gin.Context) {
 			"receivedMB": float64(c.Request.ContentLength) / (1 << 20),
 		})
 		return
+	}
+
+	projectIDStr := c.PostForm("project_id")
+	var projectID uuid.UUID
+	if projectIDStr != "" {
+		pid, err := uuid.Parse(projectIDStr)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid project_id"})
+			return
+		}
+		projectID = pid
+	} else {
+		projectID = uuid.New()
 	}
 
 	file, err := c.FormFile("file")
@@ -64,7 +76,7 @@ func AdminUploadClientFile(c *gin.Context) {
 		return
 	}
 
-	storagePath, originalName, err := files.SaveUploadedFile(file, clientID, client.FolderID, config)
+	storagePath, originalName, err := files.SaveUploadedFile(file, clientID, client.FolderID, projectID, config)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to save file: %v", err)})
 		return
@@ -79,15 +91,32 @@ func AdminUploadClientFile(c *gin.Context) {
 		FileType:     http.DetectContentType([]byte(file.Filename)),
 		ProcessedBy:  userID,
 		IsProcessed:  true,
+		ProjectID:    projectID,
 	}
-
 	if err := database.DB.Create(&fileDoc).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to record file information"})
 		return
 	}
 
-	fmt.Printf("Upload admin concluído - Arquivo: %s, ID: %s\n", originalName, fileDoc.ID)
+	defaultConfig := files.GetDefaultConfig()
 
+	var unprocessedFiles []models.FileDocument
+	if err := database.DB.Where("client_id = ? AND project_id = ? AND is_processed = false", clientID, projectID).Find(&unprocessedFiles).Error; err == nil {
+		for _, uf := range unprocessedFiles {
+			path := filepath.Join(defaultConfig.BaseDir, uf.FilePath)
+			if err := os.Remove(path); err != nil {
+				fmt.Printf("Warning: Could not delete file %s: %v\n", path, err)
+			}
+			database.DB.Delete(&uf)
+		}
+	}
+
+	clientProjectFolder := filepath.Join(defaultConfig.BaseDir, client.FolderID.String(), projectID.String())
+	if err := os.RemoveAll(clientProjectFolder); err != nil {
+		fmt.Printf("Warning: Failed to delete client's project folder %s: %v\n", clientProjectFolder, err)
+	}
+
+	fmt.Printf("Upload admin concluído - Arquivo: %s, ID: %s, ProjectID: %s\n", originalName, fileDoc.ID, projectID)
 	c.JSON(http.StatusOK, gin.H{
 		"message":      "Admin file uploaded successfully",
 		"id":           fileDoc.ID,
@@ -96,10 +125,10 @@ func AdminUploadClientFile(c *gin.Context) {
 		"sizeInMB":     float64(fileDoc.FileSize) / (1 << 20),
 		"clientId":     clientID,
 		"processedBy":  userID,
+		"project_id":   projectID,
 	})
 }
 
-// GetAdminProcessedFiles returns all processed files for a specific client
 func GetAdminProcessedFiles(c *gin.Context) {
 	clientID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -122,7 +151,6 @@ func GetAdminProcessedFiles(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"files": files})
 }
 
-// GetUnprocessedFiles returns all unprocessed files for a specific client
 func GetUnprocessedFiles(c *gin.Context) {
 	clientID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -143,7 +171,6 @@ func GetUnprocessedFiles(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"files": files})
 }
 
-// DeleteUnprocessedFiles deletes unprocessed files for a specific client
 func DeleteUnprocessedFiles(c *gin.Context) {
 	clientID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -227,4 +254,76 @@ func deleteFiles(files []models.FileDocument, basePath string) []uuid.UUID {
 	}
 
 	return deletedFiles
+}
+
+func UpdateAdminUserStatus(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	var req struct {
+		Status string `json:"status" binding:"required,oneof=ativo inativo"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var user models.User
+	if err := database.DB.Where("id = ?", id).First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	user.Status = req.Status
+	if err := database.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user status"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User status updated successfully", "user": user})
+}
+
+func UpdateAdminUserInfo(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	var req struct {
+		Email    string `json:"email" binding:"omitempty,email"`
+		Password string `json:"password" binding:"omitempty,min=6"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var user models.User
+	if err := database.DB.Where("id = ?", id).First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	if req.Email != "" {
+		user.Email = req.Email
+	}
+	if req.Password != "" {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+			return
+		}
+		user.PasswordHash = string(hashedPassword)
+	}
+
+	if err := database.DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update admin information"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Admin info updated successfully", "user": user})
 }
