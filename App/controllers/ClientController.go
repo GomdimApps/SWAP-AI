@@ -18,20 +18,15 @@ type ClientRequest struct {
 	Status   string `json:"status"`
 }
 
-// GetUserID extracts user ID from context (set by auth middleware)
 func GetUserID(c *gin.Context) (uuid.UUID, bool) {
-	// In a real app, this would be extracted from the JWT token
-	// For testing, we simulate this by using a context value set by authMiddleware
 	userIDValue, exists := c.Get("userID")
 	if !exists {
 		return uuid.Nil, false
 	}
-
 	userID, ok := userIDValue.(uuid.UUID)
 	return userID, ok
 }
 
-// GetClients returns all clients for the authenticated user
 func GetClients(c *gin.Context) {
 	userID, ok := GetUserID(c)
 	if !ok {
@@ -39,7 +34,6 @@ func GetClients(c *gin.Context) {
 		return
 	}
 
-	// Get all clients for this user
 	var clients []models.Client
 	if err := database.DB.Where("user_id = ?", userID).Find(&clients).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch clients"})
@@ -49,7 +43,6 @@ func GetClients(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"clients": clients})
 }
 
-// CreateClient creates a new client
 func CreateClient(c *gin.Context) {
 	var req ClientRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -65,7 +58,6 @@ func CreateClient(c *gin.Context) {
 
 	tx := database.DB.Begin()
 
-	// Create a new folder for the client
 	folder := models.Folder{}
 	if err := tx.Create(&folder).Error; err != nil {
 		tx.Rollback()
@@ -73,7 +65,6 @@ func CreateClient(c *gin.Context) {
 		return
 	}
 
-	// Hash the client's password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		tx.Rollback()
@@ -81,7 +72,6 @@ func CreateClient(c *gin.Context) {
 		return
 	}
 
-	// Create client
 	client := models.Client{
 		UserID:       userID,
 		FolderID:     folder.ID,
@@ -102,7 +92,6 @@ func CreateClient(c *gin.Context) {
 	c.JSON(http.StatusCreated, client)
 }
 
-// GetClientByID returns a client by ID
 func GetClientByID(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -125,7 +114,6 @@ func GetClientByID(c *gin.Context) {
 	c.JSON(http.StatusOK, client)
 }
 
-// UpdateClient updates a client
 func UpdateClient(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -151,7 +139,6 @@ func UpdateClient(c *gin.Context) {
 		return
 	}
 
-	// Update fields
 	client.Name = req.Name
 	client.Email = req.Email
 	client.WhatsApp = req.WhatsApp
@@ -167,7 +154,6 @@ func UpdateClient(c *gin.Context) {
 	c.JSON(http.StatusOK, client)
 }
 
-// DeleteClient deletes a client
 func DeleteClient(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -187,19 +173,15 @@ func DeleteClient(c *gin.Context) {
 		return
 	}
 
-	// Get folder ID before deleting the client
 	folderID := client.FolderID
-
 	tx := database.DB.Begin()
 
-	// Delete client
 	if err := tx.Delete(&client).Error; err != nil {
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete client"})
 		return
 	}
 
-	// Delete associated folder
 	if err := tx.Delete(&models.Folder{}, folderID).Error; err != nil {
 		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete folder"})
