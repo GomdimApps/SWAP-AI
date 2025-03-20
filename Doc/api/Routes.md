@@ -171,6 +171,30 @@ Resposta esperada:
 }
 ```
 
+### Listar Usuários de Administração
+
+Utilize o token JWT de um usuário admin para listar os usuários de administração:
+
+```bash
+curl -X GET http://192.168.10.3:8080/api/v1/admin/users \
+    -H "Authorization: Bearer <jwt_token>"
+```
+
+Resposta esperada:
+```json
+{
+    "users": [
+        {
+            "ID": "<uuid>",
+            "Email": "admin@example.com",
+            "PasswordHash": "<hash>",
+            "CreatedAt": "<timestamp>",
+            "UpdatedAt": "<timestamp>"
+        }
+    ]
+}
+```
+
 ---
 
 # Rotas de Cliente

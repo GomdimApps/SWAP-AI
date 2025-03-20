@@ -85,6 +85,9 @@ func SetupRouter() *gin.Engine {
 			admin.GET("/:id/unprocessed-files", controllers.GetUnprocessedFiles)
 			admin.DELETE("/:id/delete-unprocessed", controllers.DeleteUnprocessedFiles)
 			admin.DELETE("/:id/delete-unprocessed/:fileID", controllers.DeleteUnprocessedFiles)
+
+			// Nova rota para listagem dos usuários de administração
+			admin.GET("/users", controllers.ListAdminUser)
 		}
 	}
 
