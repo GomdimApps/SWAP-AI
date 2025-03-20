@@ -75,12 +75,9 @@ CREATE INDEX idx_files_client_id ON files.documents(client_id);
 CREATE INDEX idx_files_folder_id ON files.documents(folder_id);
 CREATE INDEX idx_files_is_processed ON files.documents(is_processed);
 
--- Criação da tabela para projetos dos arquivos:
 CREATE TABLE files.project (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     client_id UUID NOT NULL REFERENCES clients.clients_swap(id) ON DELETE CASCADE,
-    file1_id UUID NOT NULL REFERENCES files.documents(id) ON DELETE CASCADE,
-    file2_id UUID NOT NULL REFERENCES files.documents(id) ON DELETE CASCADE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

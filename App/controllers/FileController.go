@@ -108,11 +108,10 @@ func UploadClientFile(c *gin.Context) {
 		return
 	}
 
-	// Cria registro na nova tabela de projeto associando os dois arquivos
+	// Cria registro na nova tabela de projeto usando apenas o projectID e o clientID
 	projectRecord := models.Project{
+		ID:       projectID, // Usa o projectID gerado anteriormente
 		ClientID: clientID,
-		File1ID:  fileDoc1.ID,
-		File2ID:  fileDoc2.ID,
 	}
 	if err := database.DB.Create(&projectRecord).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create project record"})

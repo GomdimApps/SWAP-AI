@@ -73,12 +73,10 @@ func (FileDocument) TableName() string {
 	return "files.documents"
 }
 
-// Nova struct para o Projeto
+// Nova struct para o Projeto (ajustada)
 type Project struct {
 	ID        uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	ClientID  uuid.UUID `gorm:"not null"`
-	File1ID   uuid.UUID `gorm:"not null"`
-	File2ID   uuid.UUID `gorm:"not null"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
