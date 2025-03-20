@@ -29,7 +29,7 @@ type FileUploadConfig struct {
 }
 
 func getDefaultAllowedExtensions() []string {
-	return []string{".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png"}
+	return []string{".mov", ".mkv", ".mp4", ".jpg", ".jpeg", ".png"}
 }
 
 func createUploadConfig(dirEnvVar, defaultDir string) *FileUploadConfig {
