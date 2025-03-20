@@ -195,9 +195,9 @@ Resposta esperada:
 }
 ```
 
-### Listar Arquivos Pendentes do Cliente
+### Listar Project IDs de Arquivos Pendentes do Cliente
 
-Utilize o endpoint abaixo para listar os arquivos que ainda não foram processados para um cliente. Envie o token JWT de um usuário autenticado no cabeçalho da requisição:
+Envie o token JWT de um usuário autenticado para obter os project IDs e seus arquivos relacionados que não foram processados:
 
 ```bash
 curl -X GET http://192.168.10.3:8080/api/v1/clients/<client_uuid>/pending-files \
@@ -207,25 +207,32 @@ curl -X GET http://192.168.10.3:8080/api/v1/clients/<client_uuid>/pending-files 
 Resposta esperada:
 ```json
 {
-    "pending_files": [
+    "pending_projects": [
         {
-            "ID": "<file_uuid>",
-            "ClientID": "<client_uuid>",
-            "FolderID": "<folder_uuid>",
-            "OriginalName": "documento.pdf",
-            "FilePath": "<client_uuid>/12345678-unique-file.pdf",
-            "FileSize": 12345,
-            "FileType": "application/pdf",
-            "CreatedAt": "2023-01-01T12:00:00Z",
-            "UpdatedAt": "2023-01-01T12:00:00Z"
+            "project_id": "<project_uuid>",
+            "files": [
+                {
+                    "ID": "<uuid>",
+                    "ClientID": "<uuid>",
+                    "FolderID": "<uuid>",
+                    "OriginalName": "doc1.png",
+                    "FilePath": "<path_to_file>",
+                    "FileSize": 104857600,
+                    "FileType": "text/plain; charset=utf-8",
+                    "ProcessedBy": "00000000-0000-0000-0000-000000000000",
+                    "IsProcessed": false,
+                    "CreatedAt": "<timestamp>",
+                    "UpdatedAt": "<timestamp>"
+                }
+            ]
         }
     ]
 }
 ```
 
-### Listar Arquivos Processados do Cliente
+### Listar Project IDs de Arquivos Processados do Cliente
 
-Utilize o endpoint abaixo para listar os arquivos que já foram processados para um cliente. Envie o token JWT de um usuário autenticado no cabeçalho da requisição:
+Envie o token JWT de um usuário autenticado para obter os project IDs e seus arquivos relacionados que foram processados:
 
 ```bash
 curl -X GET http://192.168.10.3:8080/api/v1/clients/<client_uuid>/processed-files \
@@ -235,17 +242,24 @@ curl -X GET http://192.168.10.3:8080/api/v1/clients/<client_uuid>/processed-file
 Resposta esperada:
 ```json
 {
-    "processed_files": [
+    "processed_projects": [
         {
-            "ID": "<file_uuid>",
-            "ClientID": "<client_uuid>",
-            "FolderID": "<folder_uuid>",
-            "OriginalName": "documento.pdf",
-            "FilePath": "<client_uuid>/12345678-unique-file.pdf",
-            "FileSize": 12345,
-            "FileType": "application/pdf",
-            "CreatedAt": "2023-01-01T12:00:00Z",
-            "UpdatedAt": "2023-01-01T12:30:00Z"
+            "project_id": "<project_uuid>",
+            "files": [
+                {
+                    "ID": "<uuid>",
+                    "ClientID": "<uuid>",
+                    "FolderID": "<uuid>",
+                    "OriginalName": "doc1.png",
+                    "FilePath": "<path_to_file>",
+                    "FileSize": 104857600,
+                    "FileType": "text/plain; charset=utf-8",
+                    "ProcessedBy": "00000000-0000-0000-0000-000000000000",
+                    "IsProcessed": true,
+                    "CreatedAt": "<timestamp>",
+                    "UpdatedAt": "<timestamp>"
+                }
+            ]
         }
     ]
 }

@@ -9,6 +9,11 @@ import (
 	"github.com/google/uuid"
 )
 
+type ProjectFilesGroup struct {
+	ProjectID uuid.UUID             `json:"project_id"`
+	Files     []models.FileDocument `json:"files"`
+}
+
 func ListPendingClientFiles(c *gin.Context) {
 	clientID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -28,13 +33,32 @@ func ListPendingClientFiles(c *gin.Context) {
 		return
 	}
 
-	var pendingFiles []models.FileDocument
-	if err := database.DB.Where("client_id = ? AND is_processed = false", clientID).Find(&pendingFiles).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Falha ao buscar arquivos pendentes"})
+	var projectIDs []uuid.UUID
+	if err := database.DB.Model(&models.FileDocument{}).
+		Where("client_id = ? AND is_processed = false", clientID).
+		Distinct("project_id").
+		Pluck("project_id", &projectIDs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Falha ao buscar project IDs de arquivos pendentes"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"pending_files": pendingFiles})
+	var groups []ProjectFilesGroup
+	for _, pid := range projectIDs {
+		var files []models.FileDocument
+		if err := database.DB.
+			Where("client_id = ? AND is_processed = false AND project_id = ?", clientID, pid).
+			Find(&files).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Falha ao buscar arquivos para o project_id"})
+			return
+		}
+		group := ProjectFilesGroup{
+			ProjectID: pid,
+			Files:     files,
+		}
+		groups = append(groups, group)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"pending_projects": groups})
 }
 
 func ListProcessedClientFiles(c *gin.Context) {
@@ -56,11 +80,30 @@ func ListProcessedClientFiles(c *gin.Context) {
 		return
 	}
 
-	var processedFiles []models.FileDocument
-	if err := database.DB.Where("client_id = ? AND is_processed = true", clientID).Find(&processedFiles).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Falha ao buscar arquivos processados"})
+	var projectIDs []uuid.UUID
+	if err := database.DB.Model(&models.FileDocument{}).
+		Where("client_id = ? AND is_processed = true", clientID).
+		Distinct("project_id").
+		Pluck("project_id", &projectIDs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Falha ao buscar project IDs de arquivos processados"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"processed_files": processedFiles})
+	var groups []ProjectFilesGroup
+	for _, pid := range projectIDs {
+		var files []models.FileDocument
+		if err := database.DB.
+			Where("client_id = ? AND is_processed = true AND project_id = ?", clientID, pid).
+			Find(&files).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Falha ao buscar arquivos para o project_id"})
+			return
+		}
+		group := ProjectFilesGroup{
+			ProjectID: pid,
+			Files:     files,
+		}
+		groups = append(groups, group)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"processed_projects": groups})
 }
