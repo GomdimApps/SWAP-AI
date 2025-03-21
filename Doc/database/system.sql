@@ -22,12 +22,16 @@ CREATE TABLE clients.clients (
 );
 
 -- New tables for the SWAP-AI system
+DROP TABLE IF EXISTS system.users CASCADE;
+
 CREATE TABLE system.users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL,
+    status VARCHAR(10) DEFAULT 'ativo'
 );
 
 -- Moved from system to files schema
