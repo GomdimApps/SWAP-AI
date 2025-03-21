@@ -55,23 +55,22 @@ func RegisterUser(c *gin.Context) {
 		return
 	}
 
-	now := time.Now()
-	var expiresAt time.Time
+	// Calcula a duração com base no período informado
+	var duration time.Duration
 	switch req.ExpirationPeriod {
 	case "days":
-		expiresAt = now.Add(time.Duration(req.ExpirationValue) * 24 * time.Hour)
+		duration = time.Hour * 24 * time.Duration(req.ExpirationValue)
 	case "weeks":
-		expiresAt = now.Add(time.Duration(req.ExpirationValue*7) * 24 * time.Hour)
+		duration = time.Hour * 24 * 7 * time.Duration(req.ExpirationValue)
 	case "months":
-		expiresAt = now.Add(time.Duration(req.ExpirationValue*30) * 24 * time.Hour)
+		duration = time.Hour * 24 * 30 * time.Duration(req.ExpirationValue)
 	case "years":
-		expiresAt = now.Add(time.Duration(req.ExpirationValue*365) * 24 * time.Hour)
-	default:
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid expiration period"})
-		return
+		duration = time.Hour * 24 * 365 * time.Duration(req.ExpirationValue)
 	}
+	expiresAt := time.Now().Add(duration)
+
 	status := "ativo"
-	if expiresAt.Before(now) {
+	if expiresAt.Before(time.Now()) {
 		status = "inativo"
 	}
 

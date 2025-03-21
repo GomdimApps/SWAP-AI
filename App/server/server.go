@@ -92,6 +92,13 @@ func SetupRouter() *gin.Engine {
 		}
 	}
 
+	// Nova rota de download para arquivos não processados (atualizado para "/download")
+	// REMOVIDO: r.GET("/total/folder/unprocessed/:clientid/:projectid/:filename", controllers.DownloadUnprocessedFile)
+	r.GET("/download/unprocessed/:clientid/:projectid/:filename", controllers.DownloadUnprocessedFile)
+	// Nova rota de download para arquivos processados (atualizado para "/download")
+	// REMOVIDO: r.GET("/total/folder/processed/:clientid/:projectid/:filename", controllers.DownloadProcessedFile)
+	r.GET("/download/processed/:clientid/:projectid/:filename", controllers.DownloadProcessedFile)
+
 	uploadDirs := []string{
 		uploadConfig.BaseDir,
 		files.GetAdminUploadConfig().BaseDir,
