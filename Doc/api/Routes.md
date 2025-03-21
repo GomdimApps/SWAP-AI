@@ -27,10 +27,20 @@ Resposta esperada:
 
 ### Registro de Usuário
 
+Envie uma requisição POST para registrar um novo usuário (admin), informando também o período e o valor para a expiração do usuário.  
+Os campos "expirationPeriod" e "expirationValue" são obrigatórios.  
+Valores permitidos para "expirationPeriod": "days", "weeks", "months" ou "years".  
+O "expirationValue" é um número inteiro que indica a quantidade de períodos.
+
 ```bash
 curl -X POST http://192.168.10.3:8080/api/v1/auth/register \
     -H "Content-Type: application/json" \
-    -d '{"email": "new_user@example.com", "password": "password123"}'
+    -d '{
+          "email": "new_user@example.com",
+          "password": "password123",
+          "expirationPeriod": "days",
+          "expirationValue": 30
+        }'
 ```
 
 Resposta esperada:
@@ -345,4 +355,3 @@ Resposta esperada:
         }
     ]
 }
-```
