@@ -30,8 +30,8 @@ Resposta esperada:
 Envie uma requisição POST para registrar um novo usuário (admin), informando também o período e o valor para a expiração do usuário.  
 Os campos "expirationPeriod" e "expirationValue" são obrigatórios.  
 Valores permitidos para "expirationPeriod": "days", "weeks", "months" ou "years".  
-O "expirationValue" é um número inteiro que indica a quantidade de períodos.
 
+Exemplo de requisição:
 ```bash
 curl -X POST http://192.168.10.3:8080/api/v1/auth/register \
     -H "Content-Type: application/json" \
@@ -46,7 +46,7 @@ curl -X POST http://192.168.10.3:8080/api/v1/auth/register \
 Resposta esperada:
 ```json
 {
-    "token": "Bearer <jwt_token>",
+    "token": "<jwt_token>",
     "userId": "<uuid>",
     "email": "new_user@example.com",
     "expiresAt": 1678909876
@@ -314,7 +314,8 @@ Resposta esperada:
                     "ProcessedBy": "00000000-0000-0000-0000-000000000000",
                     "IsProcessed": false,
                     "CreatedAt": "<timestamp>",
-                    "UpdatedAt": "<timestamp>"
+                    "UpdatedAt": "<timestamp>",
+                    "download_url": "http://192.168.10.3:8080/download/unprocessed/<clientid>/<projectid>/<filename>"
                 }
             ]
         }
@@ -349,9 +350,27 @@ Resposta esperada:
                     "ProcessedBy": "00000000-0000-0000-0000-000000000000",
                     "IsProcessed": true,
                     "CreatedAt": "<timestamp>",
-                    "UpdatedAt": "<timestamp>"
+                    "UpdatedAt": "<timestamp>",
+                    "download_url": "http://192.168.10.3:8080/download/processed/<clientid>/<projectid>/<filename>"
                 }
             ]
         }
     ]
 }
+```
+
+## Rotas de Download de Arquivos
+
+### Arquivos Não Processados
+Endpoint para baixar arquivos não processados:  
+Retorna, além dos metadados, um link de download para acessar o arquivo, utilizando a rota:
+```bash
+curl -X GET http://192.168.10.3:8080/download/unprocessed/<clientid>/<projectid>/<filename>
+```
+
+### Arquivos Processados
+Endpoint para baixar arquivos processados:  
+Retorna, além dos metadados, um link de download para acessar o arquivo, utilizando a rota:
+```bash
+curl -X GET http://192.168.10.3:8080/download/processed/<clientid>/<projectid>/<filename>
+```
