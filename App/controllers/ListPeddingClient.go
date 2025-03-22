@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/NightGhost404/SWAP_AI/App/database"
@@ -9,9 +10,14 @@ import (
 	"github.com/google/uuid"
 )
 
+type FileResponse struct {
+	models.FileDocument
+	DownloadURL string `json:"download_url"`
+}
+
 type ProjectFilesGroup struct {
-	ProjectID uuid.UUID             `json:"project_id"`
-	Files     []models.FileDocument `json:"files"`
+	ProjectID uuid.UUID      `json:"project_id"`
+	Files     []FileResponse `json:"files"`
 }
 
 func ListPendingClientFiles(c *gin.Context) {
@@ -51,9 +57,20 @@ func ListPendingClientFiles(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Falha ao buscar arquivos para o project_id"})
 			return
 		}
+
+		var fileResponses []FileResponse
+		for _, file := range files {
+			// Atualizado para incluir o download_url usando a rota "download/unprocessed"
+			downloadLink := fmt.Sprintf("http://192.168.10.3:8080/download/unprocessed/%s/%s/%s", file.ClientID, file.ProjectID, file.OriginalName)
+			fileResponses = append(fileResponses, FileResponse{
+				FileDocument: file,
+				DownloadURL:  downloadLink,
+			})
+		}
+
 		group := ProjectFilesGroup{
 			ProjectID: pid,
-			Files:     files,
+			Files:     fileResponses,
 		}
 		groups = append(groups, group)
 	}
@@ -98,9 +115,20 @@ func ListProcessedClientFiles(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Falha ao buscar arquivos para o project_id"})
 			return
 		}
+
+		var fileResponses []FileResponse
+		for _, file := range files {
+			// Atualizado para incluir o download_url usando a rota "download/processed"
+			downloadLink := fmt.Sprintf("http://192.168.10.3:8080/download/processed/%s/%s/%s", file.ClientID, file.ProjectID, file.OriginalName)
+			fileResponses = append(fileResponses, FileResponse{
+				FileDocument: file,
+				DownloadURL:  downloadLink,
+			})
+		}
+
 		group := ProjectFilesGroup{
 			ProjectID: pid,
-			Files:     files,
+			Files:     fileResponses,
 		}
 		groups = append(groups, group)
 	}
