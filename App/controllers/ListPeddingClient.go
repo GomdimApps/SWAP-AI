@@ -27,16 +27,30 @@ func ListPendingClientFiles(c *gin.Context) {
 		return
 	}
 
-	userID, ok := GetUserID(c)
+	// Recupera informações do token
+	tokenID, tokenType, ok := GetTokenInfo(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Usuário não autenticado"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Token info not found"})
 		return
 	}
-
 	var client models.Client
-	if err := database.DB.Where("id = ? AND user_id = ?", clientID, userID).First(&client).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Cliente não encontrado ou acesso negado"})
-		return
+	if tokenType == "client" {
+		// Usuário cliente: busca somente pelo id usando tokenID
+		if err := database.DB.Where("id = ?", tokenID).First(&client).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
+			return
+		}
+	} else {
+		// Token de admin: utiliza o parâmetro de rota e verifica se o client foi criado pelo admin
+		id, err := uuid.Parse(c.Param("id"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid client ID"})
+			return
+		}
+		if err := database.DB.Where("id = ? AND user_id = ?", id, tokenID).First(&client).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
+			return
+		}
 	}
 
 	var projectIDs []uuid.UUID
@@ -85,16 +99,30 @@ func ListProcessedClientFiles(c *gin.Context) {
 		return
 	}
 
-	userID, ok := GetUserID(c)
+	// Recupera informações do token
+	tokenID, tokenType, ok := GetTokenInfo(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Usuário não autenticado"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Token info not found"})
 		return
 	}
-
 	var client models.Client
-	if err := database.DB.Where("id = ? AND user_id = ?", clientID, userID).First(&client).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Cliente não encontrado ou acesso negado"})
-		return
+	if tokenType == "client" {
+		// Usuário cliente: busca somente pelo id usando tokenID
+		if err := database.DB.Where("id = ?", tokenID).First(&client).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
+			return
+		}
+	} else {
+		// Token de admin: utiliza o parâmetro de rota e verifica se o client foi criado pelo admin
+		id, err := uuid.Parse(c.Param("id"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid client ID"})
+			return
+		}
+		if err := database.DB.Where("id = ? AND user_id = ?", id, tokenID).First(&client).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
+			return
+		}
 	}
 
 	var projectIDs []uuid.UUID
