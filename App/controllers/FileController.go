@@ -22,16 +22,30 @@ func UploadClientFile(c *gin.Context) {
 		return
 	}
 
-	userID, ok := GetUserID(c)
+	// Obter informações do token (id e token_type)
+	tokenID, tokenType, ok := GetTokenInfo(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Token info not found"})
 		return
 	}
 
 	var client models.Client
-	if err := database.DB.Where("id = ? AND user_id = ?", clientID, userID).First(&client).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Client not found or access denied"})
-		return
+	if tokenType == "client" {
+		// Se o token for do tipo "client", o id do parâmetro deve ser igual ao do token
+		if clientID != tokenID {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Access denied"})
+			return
+		}
+		if err := database.DB.Where("id = ?", clientID).First(&client).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
+			return
+		}
+	} else {
+		// Caso token admin, verifica que o cliente pertence ao usuário admin (user_id)
+		if err := database.DB.Where("id = ? AND user_id = ?", clientID, tokenID).First(&client).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Client not found or access denied"})
+			return
+		}
 	}
 
 	config := files.GetDefaultConfig()
@@ -136,16 +150,31 @@ func GetClientFiles(c *gin.Context) {
 		return
 	}
 
-	userID, ok := GetUserID(c)
+	// Recupera informações do token
+	tokenID, tokenType, ok := GetTokenInfo(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Token info not found"})
 		return
 	}
 
 	var client models.Client
-	if err := database.DB.Where("id = ? AND user_id = ?", clientID, userID).First(&client).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Client not found or access denied"})
-		return
+	if tokenType == "client" {
+		// Usuário cliente: busca somente pelo id usando tokenID
+		if err := database.DB.Where("id = ?", tokenID).First(&client).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
+			return
+		}
+	} else {
+		// Token de admin: utiliza o parâmetro de rota e verifica se o client foi criado pelo admin
+		id, err := uuid.Parse(c.Param("id"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid client ID"})
+			return
+		}
+		if err := database.DB.Where("id = ? AND user_id = ?", id, tokenID).First(&client).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
+			return
+		}
 	}
 
 	var files []models.FileDocument

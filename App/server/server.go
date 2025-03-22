@@ -5,16 +5,12 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/NightGhost404/SWAP_AI/App/controllers"
 	"github.com/NightGhost404/SWAP_AI/App/database"
 	"github.com/NightGhost404/SWAP_AI/App/files"
-	"github.com/NightGhost404/SWAP_AI/App/models"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/google/uuid"
 )
 
 func SetupRouter() *gin.Engine {
@@ -92,11 +88,7 @@ func SetupRouter() *gin.Engine {
 		}
 	}
 
-	// Nova rota de download para arquivos não processados (atualizado para "/download")
-	// REMOVIDO: r.GET("/total/folder/unprocessed/:clientid/:projectid/:filename", controllers.DownloadUnprocessedFile)
 	r.GET("/download/unprocessed/:clientid/:projectid/:filename", controllers.DownloadUnprocessedFile)
-	// Nova rota de download para arquivos processados (atualizado para "/download")
-	// REMOVIDO: r.GET("/total/folder/processed/:clientid/:projectid/:filename", controllers.DownloadProcessedFile)
 	r.GET("/download/processed/:clientid/:projectid/:filename", controllers.DownloadProcessedFile)
 
 	uploadDirs := []string{
@@ -135,89 +127,5 @@ func StartServer() {
 	log.Printf("Server starting on port 8080 with extended timeouts for large file uploads")
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
-	}
-}
-
-func authMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is required"})
-			c.Abort()
-			return
-		}
-
-		tokenParts := strings.Split(authHeader, " ")
-		if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization format"})
-			c.Abort()
-			return
-		}
-
-		tokenString := tokenParts[1]
-		secretKey := os.Getenv("SECRET_KEY")
-		if secretKey == "" {
-			secretKey = "mysecret"
-		}
-
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			// Validate signing algorithm
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("Unexpected signing method")
-			}
-			return []byte(secretKey), nil
-		})
-
-		if err != nil || !token.Valid {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-			c.Abort()
-			return
-		}
-
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
-			c.Abort()
-			return
-		}
-
-		// Check that the token is for a user (not a client)
-		if claims["type"] != "user" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized token type"})
-			c.Abort()
-			return
-		}
-
-		userIDStr, ok := claims["user_id"].(string)
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token payload"})
-			c.Abort()
-			return
-		}
-
-		userID, err := uuid.Parse(userIDStr)
-		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user ID in token"})
-			c.Abort()
-			return
-		}
-
-		c.Set("userID", userID)
-
-		// Nova verificação: buscar usuário e validar status/expiração
-		var user models.User
-		if err := database.DB.Where("id = ?", userID).First(&user).Error; err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
-			c.Abort()
-			return
-		}
-
-		if time.Now().After(user.ExpiresAt) || user.Status != "ativo" {
-			c.JSON(http.StatusForbidden, gin.H{"error": "User is inactive or expired"})
-			c.Abort()
-			return
-		}
-
-		c.Next()
 	}
 }

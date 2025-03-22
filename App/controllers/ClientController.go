@@ -27,6 +27,27 @@ func GetUserID(c *gin.Context) (uuid.UUID, bool) {
 	return userID, ok
 }
 
+// Nova função auxiliar para obter ID e token_type do contexto.
+func GetTokenInfo(c *gin.Context) (uuid.UUID, string, bool) {
+	idVal, exists := c.Get("userID")
+	if !exists {
+		return uuid.Nil, "", false
+	}
+	tokenTypeVal, exists := c.Get("token_type")
+	if !exists {
+		return uuid.Nil, "", false
+	}
+	id, ok := idVal.(uuid.UUID)
+	if !ok {
+		return uuid.Nil, "", false
+	}
+	tokenType, ok := tokenTypeVal.(string)
+	if !ok {
+		return uuid.Nil, "", false
+	}
+	return id, tokenType, true
+}
+
 func GetClients(c *gin.Context) {
 	userID, ok := GetUserID(c)
 	if !ok {
@@ -100,16 +121,29 @@ func GetClientByID(c *gin.Context) {
 		return
 	}
 
-	userID, ok := GetUserID(c)
+	tokenID, tokenType, ok := GetTokenInfo(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Token info not found"})
 		return
 	}
 
 	var client models.Client
-	if err := database.DB.Where("id = ? AND user_id = ?", id, userID).First(&client).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
-		return
+	if tokenType == "client" {
+		// O cliente só pode acessar a si mesmo.
+		if id != tokenID {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Access denied"})
+			return
+		}
+		if err := database.DB.Where("id = ?", id).First(&client).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
+			return
+		}
+	} else {
+		// Usuário admin: valida que o client foi criado por ele.
+		if err := database.DB.Where("id = ? AND user_id = ?", id, tokenID).First(&client).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, client)
@@ -128,16 +162,27 @@ func UpdateClient(c *gin.Context) {
 		return
 	}
 
-	userID, ok := GetUserID(c)
+	tokenID, tokenType, ok := GetTokenInfo(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Token info not found"})
 		return
 	}
 
 	var client models.Client
-	if err := database.DB.Where("id = ? AND user_id = ?", id, userID).First(&client).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
-		return
+	if tokenType == "client" {
+		if id != tokenID {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Access denied"})
+			return
+		}
+		if err := database.DB.Where("id = ?", id).First(&client).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
+			return
+		}
+	} else {
+		if err := database.DB.Where("id = ? AND user_id = ?", id, tokenID).First(&client).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
+			return
+		}
 	}
 
 	client.Name = req.Name
@@ -162,16 +207,27 @@ func DeleteClient(c *gin.Context) {
 		return
 	}
 
-	userID, ok := GetUserID(c)
+	tokenID, tokenType, ok := GetTokenInfo(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Token info not found"})
 		return
 	}
 
 	var client models.Client
-	if err := database.DB.Where("id = ? AND user_id = ?", id, userID).First(&client).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
-		return
+	if tokenType == "client" {
+		if id != tokenID {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Access denied"})
+			return
+		}
+		if err := database.DB.Where("id = ?", id).First(&client).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
+			return
+		}
+	} else {
+		if err := database.DB.Where("id = ? AND user_id = ?", id, tokenID).First(&client).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
+			return
+		}
 	}
 
 	folderID := client.FolderID
