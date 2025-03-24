@@ -74,8 +74,8 @@ func ListPendingClientFiles(c *gin.Context) {
 
 		var fileResponses []FileResponse
 		for _, file := range files {
-			// Atualizado para incluir o download_url usando a rota "download/unprocessed"
-			downloadLink := fmt.Sprintf("http://192.168.10.3:8080/download/unprocessed/%s/%s/%s", file.ClientID, file.ProjectID, file.OriginalName)
+			// Alterado: utilizando file.ID como 'fileid' para download
+			downloadLink := fmt.Sprintf("http://192.168.10.3:8080/download/unprocessed/%s/%s/%s", file.ClientID, file.ProjectID, file.ID)
 			fileResponses = append(fileResponses, FileResponse{
 				FileDocument: file,
 				DownloadURL:  downloadLink,
@@ -146,8 +146,8 @@ func ListProcessedClientFiles(c *gin.Context) {
 
 		var fileResponses []FileResponse
 		for _, file := range files {
-			// Atualizado para incluir o download_url usando a rota "download/processed"
-			downloadLink := fmt.Sprintf("http://192.168.10.3:8080/download/processed/%s/%s/%s", file.ClientID, file.ProjectID, file.OriginalName)
+			// Alterado: utilizando file.ID como 'fileid' para download
+			downloadLink := fmt.Sprintf("http://192.168.10.3:8080/download/processed/%s/%s/%s", file.ClientID, file.ProjectID, file.ID)
 			fileResponses = append(fileResponses, FileResponse{
 				FileDocument: file,
 				DownloadURL:  downloadLink,
