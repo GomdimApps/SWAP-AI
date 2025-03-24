@@ -88,8 +88,9 @@ func SetupRouter() *gin.Engine {
 		}
 	}
 
-	r.GET("/download/unprocessed/:clientid/:projectid/:filename", controllers.DownloadUnprocessedFile)
-	r.GET("/download/processed/:clientid/:projectid/:filename", controllers.DownloadProcessedFile)
+	r.GET("/download/unprocessed/:clientid/:projectid/:fileid", controllers.DownloadUnprocessedFile)
+	// Alteração da rota de download de arquivos processados para usar "fileid"
+	r.GET("/download/processed/:clientid/:projectid/:fileid", controllers.DownloadProcessedFile)
 
 	uploadDirs := []string{
 		uploadConfig.BaseDir,

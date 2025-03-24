@@ -362,15 +362,14 @@ Resposta esperada:
 ## Rotas de Download de Arquivos
 
 ### Arquivos Não Processados
-Endpoint para baixar arquivos não processados:  
-Retorna, além dos metadados, um link de download para acessar o arquivo, utilizando a rota:
+Endpoint para baixar arquivos não processados. Note que o parâmetro de identificação do arquivo foi alterado para "fileid".
+Exemplo:
 ```bash
-curl -X GET http://192.168.10.3:8080/download/unprocessed/<clientid>/<projectid>/<filename>
+curl -X GET http://192.168.10.3:8080/download/unprocessed/<clientid>/<projectid>/<fileid>
 ```
 
 ### Arquivos Processados
-Endpoint para baixar arquivos processados:  
-Retorna, além dos metadados, um link de download para acessar o arquivo, utilizando a rota:
+Endpoint para baixar arquivos processados. Agora use "fileid" no lugar de "filename":
 ```bash
-curl -X GET http://192.168.10.3:8080/download/processed/<clientid>/<projectid>/<filename>
+curl -X GET http://192.168.10.3:8080/download/processed/<clientid>/<projectid>/<fileid>
 ```
