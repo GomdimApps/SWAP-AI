@@ -315,7 +315,7 @@ Resposta esperada:
                     "IsProcessed": false,
                     "CreatedAt": "<timestamp>",
                     "UpdatedAt": "<timestamp>",
-                    "download_url": "http://192.168.10.3:8080/download/unprocessed/<clientid>/<projectid>/<filename>"
+                    "download_url": "/download/pending/<path_to_file>"
                 }
             ]
         }
@@ -351,7 +351,7 @@ Resposta esperada:
                     "IsProcessed": true,
                     "CreatedAt": "<timestamp>",
                     "UpdatedAt": "<timestamp>",
-                    "download_url": "http://192.168.10.3:8080/download/processed/<clientid>/<projectid>/<filename>"
+                    "download_url": "/download/processed/<path_to_file>"
                 }
             ]
         }
@@ -361,15 +361,24 @@ Resposta esperada:
 
 ## Rotas de Download de Arquivos
 
-### Arquivos Não Processados
-Endpoint para baixar arquivos não processados. Note que o parâmetro de identificação do arquivo foi alterado para "fileid".
-Exemplo:
+### Arquivos Pendentes
+Endpoint para baixar arquivos não processados. Esta rota aceita o caminho completo do arquivo:
 ```bash
-curl -X GET http://192.168.10.3:8080/download/unprocessed/<clientid>/<projectid>/<fileid>
+curl -X GET http://192.168.10.3:8080/download/pending/<caminho_completo_arquivo>
+```
+
+Por exemplo:
+```bash
+curl -X GET http://192.168.10.3:8080/download/pending/7643c4bd-deb9-4864-94f7-a27d9f1dee25/481b5115-0c59-4d21-8cc5-1f7d8688672f/files/1742921008607599167-d44a2814-32ac-4942-8230-a86f108be884.png
 ```
 
 ### Arquivos Processados
-Endpoint para baixar arquivos processados. Agora use "fileid" no lugar de "filename":
+Endpoint para baixar arquivos processados. Esta rota aceita o caminho completo do arquivo:
 ```bash
-curl -X GET http://192.168.10.3:8080/download/processed/<clientid>/<projectid>/<fileid>
+curl -X GET http://192.168.10.3:8080/download/processed/<caminho_completo_arquivo>
+```
+
+Por exemplo:
+```bash
+curl -X GET http://192.168.10.3:8080/download/processed/7643c4bd-deb9-4864-94f7-a27d9f1dee25/481b5115-0c59-4d21-8cc5-1f7d8688672f/files/1742921008607599167-d44a2814-32ac-4942-8230-a86f108be884.png
 ```

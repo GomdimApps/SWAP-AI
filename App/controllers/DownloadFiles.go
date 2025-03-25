@@ -17,42 +17,49 @@ type FileInfo struct {
 }
 
 func SendPendingFile(c *gin.Context) {
-	fileName := c.Param("filename")
-	if fileName == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Nome do arquivo é obrigatório"})
+	filePath := c.Param("filename")
+	if filePath == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Caminho do arquivo é obrigatório"})
 		return
+	}
+
+	if len(filePath) > 0 && filePath[0] == '/' {
+		filePath = filePath[1:]
 	}
 
 	uploadDir := os.Getenv("UPLOAD_DIR")
-	filePath := filepath.Join(uploadDir, fileName)
+	fullPath := filepath.Join(uploadDir, filePath)
 
-	if !strings.HasPrefix(filepath.Clean(filePath), uploadDir) {
+	if !strings.HasPrefix(filepath.Clean(fullPath), uploadDir) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Acesso negado ao arquivo solicitado"})
 		return
 	}
 
-	sendFileToClient(c, filePath)
+	sendFileToClient(c, fullPath)
 }
 
 func SendProcessedFile(c *gin.Context) {
-	fileName := c.Param("filename")
-	if fileName == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Nome do arquivo é obrigatório"})
+	filePath := c.Param("filename")
+	if filePath == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Caminho do arquivo é obrigatório"})
 		return
 	}
 
-	adminUploadDir := os.Getenv("ADMIN_UPLOAD_DIR")
-	filePath := filepath.Join(adminUploadDir, fileName)
+	if len(filePath) > 0 && filePath[0] == '/' {
+		filePath = filePath[1:]
+	}
 
-	if !strings.HasPrefix(filepath.Clean(filePath), adminUploadDir) {
+	adminUploadDir := os.Getenv("ADMIN_UPLOAD_DIR")
+	fullPath := filepath.Join(adminUploadDir, filePath)
+
+	if !strings.HasPrefix(filepath.Clean(fullPath), adminUploadDir) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Acesso negado ao arquivo solicitado"})
 		return
 	}
 
-	sendFileToClient(c, filePath)
+	sendFileToClient(c, fullPath)
 }
 
-// sendFileToClient envia o arquivo ao cliente para download
 func sendFileToClient(c *gin.Context, filePath string) {
 	file, err := os.Open(filePath)
 	if err != nil {

@@ -88,9 +88,9 @@ func SetupRouter() *gin.Engine {
 		}
 	}
 
-	// Rotas de download
-	r.GET("/download/pedding/:filename", controllers.SendPendingFile)     // Nova rota para arquivos pendentes
-	r.GET("/download/processed/:filename", controllers.SendProcessedFile) // Nova rota para arquivos processados
+	// Rotas de download usando catch-all parameter para capturar caminhos completos
+	r.GET("/download/pending/*filename", controllers.SendPendingFile)
+	r.GET("/download/processed/*filename", controllers.SendProcessedFile)
 
 	uploadDirs := []string{
 		uploadConfig.BaseDir,
