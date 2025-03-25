@@ -27,16 +27,27 @@ func ListPendingClientFiles(c *gin.Context) {
 		return
 	}
 
-	userID, ok := GetUserID(c)
+	tokenID, tokenType, ok := GetTokenInfo(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Usuário não autenticado"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Token info not found"})
 		return
 	}
-
 	var client models.Client
-	if err := database.DB.Where("id = ? AND user_id = ?", clientID, userID).First(&client).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Cliente não encontrado ou acesso negado"})
-		return
+	if tokenType == "client" {
+		if err := database.DB.Where("id = ?", tokenID).First(&client).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
+			return
+		}
+	} else {
+		id, err := uuid.Parse(c.Param("id"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid client ID"})
+			return
+		}
+		if err := database.DB.Where("id = ? AND user_id = ?", id, tokenID).First(&client).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
+			return
+		}
 	}
 
 	var projectIDs []uuid.UUID
@@ -60,8 +71,7 @@ func ListPendingClientFiles(c *gin.Context) {
 
 		var fileResponses []FileResponse
 		for _, file := range files {
-			// Atualizado para incluir o download_url usando a rota "download/unprocessed"
-			downloadLink := fmt.Sprintf("http://192.168.10.3:8080/download/unprocessed/%s/%s/%s", file.ClientID, file.ProjectID, file.OriginalName)
+			downloadLink := fmt.Sprintf("/download/pending/%s", file.FilePath)
 			fileResponses = append(fileResponses, FileResponse{
 				FileDocument: file,
 				DownloadURL:  downloadLink,
@@ -85,16 +95,27 @@ func ListProcessedClientFiles(c *gin.Context) {
 		return
 	}
 
-	userID, ok := GetUserID(c)
+	tokenID, tokenType, ok := GetTokenInfo(c)
 	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Usuário não autenticado"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Token info not found"})
 		return
 	}
-
 	var client models.Client
-	if err := database.DB.Where("id = ? AND user_id = ?", clientID, userID).First(&client).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Cliente não encontrado ou acesso negado"})
-		return
+	if tokenType == "client" {
+		if err := database.DB.Where("id = ?", tokenID).First(&client).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
+			return
+		}
+	} else {
+		id, err := uuid.Parse(c.Param("id"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid client ID"})
+			return
+		}
+		if err := database.DB.Where("id = ? AND user_id = ?", id, tokenID).First(&client).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
+			return
+		}
 	}
 
 	var projectIDs []uuid.UUID
@@ -118,8 +139,7 @@ func ListProcessedClientFiles(c *gin.Context) {
 
 		var fileResponses []FileResponse
 		for _, file := range files {
-			// Atualizado para incluir o download_url usando a rota "download/processed"
-			downloadLink := fmt.Sprintf("http://192.168.10.3:8080/download/processed/%s/%s/%s", file.ClientID, file.ProjectID, file.OriginalName)
+			downloadLink := fmt.Sprintf("/download/processed/%s", file.FilePath)
 			fileResponses = append(fileResponses, FileResponse{
 				FileDocument: file,
 				DownloadURL:  downloadLink,
